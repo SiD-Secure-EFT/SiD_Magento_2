@@ -337,9 +337,8 @@ class SIDResponseHandler
         }
         if ( $this->_order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT ) {
             $sid_status = strtoupper( $sidResultData["SID_STATUS"] );
-            $this->_order
-                ->registerCancellation( $sid_status, false )
-                ->save();
+            $this->_order->addStatusHistoryComment( __( $sid_status ) )->setIsCustomerNotified( false );
+            $this->_order->cancel()->save();
         }
     }
 }
