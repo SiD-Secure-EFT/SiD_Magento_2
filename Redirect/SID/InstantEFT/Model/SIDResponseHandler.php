@@ -100,7 +100,7 @@ class SIDResponseHandler
         return true;
     }
 
-    public function checkResponseAgainstSIDWebQueryService( $sidResultData, $redirected = null, $notified = null )
+    public function checkResponseAgainstSIDWebQueryService( $sidResultData, $notified = null, $redirected = null )
     {
         $sidError  = false;
         $sidErrMsg = '';
@@ -122,10 +122,10 @@ class SIDResponseHandler
             $sid_password  = $this->_paymentMethod->getConfigData( "password" );
 
             $xml_string = '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-              <soap:Body>
-              <sid_order_query xmlns="http://tempuri.org/"><XML>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;sid_order_query_request&gt;&lt;merchant&gt;&lt;code&gt;' . $sid_merchant . '&lt;/code&gt;&lt;uname&gt;' . $sid_username . '&lt;/uname&gt;&lt;pword&gt;' . $sid_password . '&lt;/pword&gt;&lt;/merchant&gt;&lt;orders&gt;&lt;transaction&gt;&lt;country&gt;' . $sid_country . '&lt;/country&gt;&lt;currency&gt;' . $sid_currency . '&lt;/currency&gt;&lt;amount&gt;' . $sid_amount . '&lt;/amount&gt;&lt;reference&gt;' . $sid_reference . '&lt;/reference&gt;&lt;/transaction&gt;&lt;/orders&gt;&lt;/sid_order_query_request&gt;</XML></sid_order_query>
-              </soap:Body>
-              </soap:Envelope>';
+                  <soap:Body>
+                  <sid_order_query xmlns="http://tempuri.org/"><XML>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;sid_order_query_request&gt;&lt;merchant&gt;&lt;code&gt;' . $sid_merchant . '&lt;/code&gt;&lt;uname&gt;' . $sid_username . '&lt;/uname&gt;&lt;pword&gt;' . $sid_password . '&lt;/pword&gt;&lt;/merchant&gt;&lt;orders&gt;&lt;transaction&gt;&lt;country&gt;' . $sid_country . '&lt;/country&gt;&lt;currency&gt;' . $sid_currency . '&lt;/currency&gt;&lt;amount&gt;' . $sid_amount . '&lt;/amount&gt;&lt;reference&gt;' . $sid_reference . '&lt;/reference&gt;&lt;/transaction&gt;&lt;/orders&gt;&lt;/sid_order_query_request&gt;</XML></sid_order_query>
+                  </soap:Body>
+                  </soap:Envelope>';
             $header = array(
                 "Content-Type: text/xml",
                 "Cache-Control: no-cache",
@@ -278,6 +278,9 @@ class SIDResponseHandler
             $sid_tnxid     = $sidResultData["SID_TNXID"];
 
             $status = \Magento\Sales\Model\Order::STATE_PROCESSING;
+            if ( $this->_paymentMethod->getConfigData( 'Successful_Order_status' ) != "" ) {
+                $status = $this->_paymentMethod->getConfigData( 'Successful_Order_status' );
+            }
             $this->_order->setStatus( $status ); //configure the status
             $this->_order->setState( $status )->save(); //try and configure the status
             $this->_order->save();

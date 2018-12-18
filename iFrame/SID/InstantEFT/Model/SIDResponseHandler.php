@@ -100,7 +100,7 @@ class SIDResponseHandler
         return true;
     }
 
-    public function checkResponseAgainstSIDWebQueryService( $sidResultData, $redirected = null, $notified = null )
+    public function checkResponseAgainstSIDWebQueryService( $sidResultData, $notified = null, $redirected = null )
     {
         $sidError  = false;
         $sidErrMsg = '';
@@ -278,6 +278,9 @@ class SIDResponseHandler
             $sid_tnxid     = $sidResultData["SID_TNXID"];
 
             $status = \Magento\Sales\Model\Order::STATE_PROCESSING;
+            if ( $this->_paymentMethod->getConfigData( 'Successful_Order_status' ) != "" ) {
+                $status = $this->_paymentMethod->getConfigData( 'Successful_Order_status' );
+            }
             $this->_order->setStatus( $status ); //configure the status
             $this->_order->setState( $status )->save(); //try and configure the status
             $this->_order->save();
