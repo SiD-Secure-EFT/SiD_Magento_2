@@ -3,7 +3,7 @@
  * Copyright (c) 2018 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
- * 
+ *
  * Released under the GNU General Public License
  */
 namespace SID\InstantEFT\Controller\Redirect;
@@ -19,7 +19,7 @@ class Index extends \SID\InstantEFT\Controller\AbstractSID
             $this->_logger->debug( __METHOD__ . ' : ' . print_r( $data, true ) );
             $payment_successful = false;
             if ( $this->_sidResponseHandler->validateResponse( $data ) ) {
-                if ( $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService( $data, $this->_date->gmtDate() ) ) {
+                if ( $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService( $data, $this->_date->gmtDate(), false ) ) {
                     $payment_successful = true;
                     flush();
                     $this->_redirect( 'checkout/onepage/success' );
