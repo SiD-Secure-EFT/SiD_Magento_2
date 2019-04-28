@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2019 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -10,26 +10,100 @@ namespace SID\InstantEFT\Controller\Notify;
 
 class Index extends \SID\InstantEFT\Controller\AbstractSID
 {
+
+    private $storeId;
+
+    /**
+     * indexAction
+     *
+     */
     public function execute()
     {
-        try {
-            $this->_logger->debug( __METHOD__ . ' : ' . print_r( $_POST, true ) );
-            if ( $this->_sidResponseHandler->validateResponse( $_POST ) ) {
-                // Get latest status of order before posting in case of multiple responses
-                $sid_reference = $_POST["SID_REFERENCE"];
-                $order         = $this->_orderFactory->create()->loadByIncrementId( $sid_reference );
-                if ( $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService( $_POST, true, $this->_date->gmtDate() ) ) {
-                    $this->_logger->debug( __METHOD__ . ' : Payment Successful' );
-                } else {
-                    $this->_logger->debug( __METHOD__ . ' : Payment Unsuccessful' );
-                }
-            };
-            header( 'HTTP/1.0 200 OK' );
-            flush();
-        } catch ( \Exception $e ) {
-            $this->_logger->debug( __METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString() );
-            $this->messageManager->addExceptionMessage( $e, __( 'We can\'t start SID Checkout.' ) );
-            $this->_redirect( 'checkout/cart' );
+
+        $errors   = false;
+        $sid_data = array();
+
+        $notify_data = array();
+        $post_data   = '';
+        // Get notify data
+        if ( !$errors ) {
+            $sid_data = $this->getPostData();
+            if ( $sid_data === false ) {
+                $errors = true;
+            }
         }
+
+        // Verify security signature
+
+        if ( !$errors ) {
+            // Load order
+
+            $orderId       = $sid_data['SID_REFERENCE'];
+            $this->_order  = $this->_orderFactory->create()->loadByIncrementId( $orderId );
+            $this->storeId = $this->_order->getStoreId();
+
+            $status = $sid_data['SID_STATUS'];
+
+            // Update order additional payment information
+
+            if ( $status == "COMPLETED" ) {
+                $this->_order->setStatus( \Magento\Sales\Model\Order::STATE_PROCESSING );
+                $this->_order->save();
+                $this->_order->addStatusHistoryComment( "Notify Response, Transaction has been approved, TransactionID: " . $sid_data['SID_TNXID'], \Magento\Sales\Model\Order::STATE_PROCESSING )->setIsCustomerNotified( false )->save();
+            } elseif ( $status == "CANCELLED" ) {
+                $this->_order->setStatus( \Magento\Sales\Model\Order::STATE_CANCELED );
+                $this->_order->save();
+                $this->_order->addStatusHistoryComment( "Notify Response, The User Failed to make Payment with SId Payment due to transaction being declined, TransactionID: " . $sid_data['SID_TNXID'], \Magento\Sales\Model\Order::STATE_PROCESSING )->setIsCustomerNotified( false )->save();
+            } else {
+                $this->_order->setStatus( \Magento\Sales\Model\Order::STATE_CANCELED );
+                $this->_order->save();
+                $this->_order->addStatusHistoryComment( "Notify Response, The User Failed to make Payment with SId Payment due to transaction being declined, TransactionID: " . $sid_data['SID_TNXID'], \Magento\Sales\Model\Order::STATE_PROCESSING )->setIsCustomerNotified( false )->save();
+            }
+        }
+    }
+
+    // Retrieve post data
+    public function getPostData()
+    {
+        // Posted variables from ITN
+        $nData = $_POST;
+
+        // Strip any slashes in data
+        foreach ( $nData as $key => $val ) {
+            $nData[$key] = stripslashes( $val );
+        }
+
+        // Return "false" if no data was received
+        if ( sizeof( $nData ) == 0 ) {
+            return ( false );
+        } else {
+            return ( $nData );
+        }
+
+    }
+
+    /**
+     * saveInvoice
+     *
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    protected function saveInvoice()
+    {
+        // Check for mail msg
+        $invoice = $this->_order->prepareInvoice();
+
+        $invoice->register()->capture();
+
+        /**
+         * @var \Magento\Framework\DB\Transaction $transaction
+         */
+        $transaction = $this->_transactionFactory->create();
+        $transaction->addObject( $invoice )
+            ->addObject( $invoice->getOrder() )
+            ->save();
+
+        $this->_order->addStatusHistoryComment( __( 'Notified customer about invoice #%1.', $invoice->getIncrementId() ) );
+        $this->_order->setIsCustomerNotified( true );
+        $this->_order->save();
     }
 }
