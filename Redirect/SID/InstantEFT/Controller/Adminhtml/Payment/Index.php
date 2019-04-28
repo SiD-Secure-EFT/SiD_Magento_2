@@ -1,14 +1,12 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2019 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
- * 
+ *
  * Released under the GNU General Public License
  */
 namespace SID\InstantEFT\Controller\Adminhtml\Payment;
-
-use Magento\Framework\Controller\ResultFactory;
 
 class Index extends \SID\InstantEFT\Controller\Adminhtml\Payment
 {
