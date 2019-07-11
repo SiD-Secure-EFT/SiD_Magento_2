@@ -62,12 +62,13 @@ class SIDResponseHandler
             $sid_tnxid      = $sidResultData["SID_TNXID"];
             $sid_custom_01  = $sidResultData["SID_CUSTOM_01"];
             $sid_custom_02  = $sidResultData["SID_CUSTOM_02"];
+            $sid_custom_03  = $sidResultData["SID_CUSTOM_03"];
             $sid_consistent = $sidResultData["SID_CONSISTENT"];
 
             $sid_secret       = $this->_paymentMethod->getConfigData( 'private_key' );
             $consistent_check = strtoupper( hash( 'sha512', $sid_status . $sid_merchant . $sid_country . $sid_currency
                 . $sid_reference . $sid_amount . $sid_bank . $sid_date . $sid_receiptno
-                . $sid_tnxid . $sid_custom_01 . $sid_custom_02 . $sid_secret ) );
+                . $sid_tnxid . $sid_custom_01 . $sid_custom_02 . $sid_custom_03 . $sid_secret ) );
 
             if ( $consistent_check != $sid_consistent ) {
                 $sidError  = true;

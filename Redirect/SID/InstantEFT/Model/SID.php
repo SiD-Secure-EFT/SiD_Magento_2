@@ -11,6 +11,7 @@ namespace SID\InstantEFT\Model;
 use Magento\Quote\Model\Quote;
 use Magento\Sales\Model\Order\Payment;
 use Magento\Sales\Model\Order\Payment\Transaction;
+use Magento\Framework\Data\Form\FormKey;
 
 class SID extends \Magento\Payment\Model\Method\AbstractMethod
 {
@@ -33,6 +34,7 @@ class SID extends \Magento\Payment\Model\Method\AbstractMethod
     protected $_authorizationCountKey   = 'authorization_count';
     protected $_storeManager;
     protected $_urlBuilder;
+    protected $_formKey;
     protected $_checkoutSession;
     protected $_exception;
     protected $transactionRepository;
@@ -48,6 +50,7 @@ class SID extends \Magento\Payment\Model\Method\AbstractMethod
         ConfigFactory $configFactory,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Framework\UrlInterface $urlBuilder,
+        \Magento\Framework\Data\Form\FormKey $formKey,
         \Magento\Checkout\Model\Session $checkoutSession,
         \Magento\Framework\Exception\LocalizedExceptionFactory $exception,
         \Magento\Sales\Api\TransactionRepositoryInterface $transactionRepository,
@@ -57,6 +60,7 @@ class SID extends \Magento\Payment\Model\Method\AbstractMethod
         parent::__construct( $context, $registry, $extensionFactory, $customAttributeFactory, $paymentData, $scopeConfig, $logger, $resource, $resourceCollection, $data );
         $this->_storeManager         = $storeManager;
         $this->_urlBuilder           = $urlBuilder;
+        $this->_formKey              = $formKey;
         $this->_checkoutSession      = $checkoutSession;
         $this->_exception            = $exception;
         $this->transactionRepository = $transactionRepository;
@@ -111,7 +115,8 @@ class SID extends \Magento\Payment\Model\Method\AbstractMethod
         $countryCode   = $address->getCountryId();
         $orderId       = $order->getRealOrderId();
         $orderTotal    = $order->getGrandTotal();
-        $consistent    = strtoupper( hash( 'sha512', $merchantCode . $currencyCode . $countryCode . $orderId . $orderTotal . $quoteId . $orderEntityId . $privateKey ) );
+        $csfrFormKey    = $this->_formKey->getFormKey();
+        $consistent    = strtoupper( hash( 'sha512', $merchantCode . $currencyCode . $countryCode . $orderId . $orderTotal . $quoteId . $orderEntityId . $csfrFormKey . $privateKey ) );
 
         $fields = array(
             'SID_MERCHANT'   => $merchantCode,
@@ -121,6 +126,7 @@ class SID extends \Magento\Payment\Model\Method\AbstractMethod
             'SID_AMOUNT'     => $orderTotal,
             'SID_CUSTOM_01'  => $quoteId,
             'SID_CUSTOM_02'  => $orderEntityId,
+            'SID_CUSTOM_03'  => $csfrFormKey,
             'SID_CONSISTENT' => $consistent,
         );
         return $fields;
