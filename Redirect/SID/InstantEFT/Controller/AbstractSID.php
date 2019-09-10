@@ -6,10 +6,9 @@
  *
  * Released under the GNU General Public License
  */
-namespace SID\InstantEFT\Controller;
 
 if (interface_exists("Magento\Framework\App\CsrfAwareActionInterface")) {
-    include __DIR__ . "/AbstractSID.m230.php";
+    class_alias('SID\InstantEFT\Controller\AbstractSIDm230', 'SID\InstantEFT\Controller\AbstractSID');
 } else {
-    include __DIR__ . "/AbstractSID.m220.php";
+    class_alias('SID\InstantEFT\Controller\AbstractSIDm220', 'SID\InstantEFT\Controller\AbstractSID');
 }
