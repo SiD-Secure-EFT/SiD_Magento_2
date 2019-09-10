@@ -1,5 +1,5 @@
 # SiD_Magento_2
-## SiD Instant EFT plugin v2.3.1 for Magento v2.3.2
+## SiD Instant EFT plugin v2.3.2 for Magento v2.3.2
 
 This is the SiD Instant EFT plugin for Magento 2. Please feel free to contact the SiD Instant EFT support team at support@sidpayment.com should you require any assistance.
 
