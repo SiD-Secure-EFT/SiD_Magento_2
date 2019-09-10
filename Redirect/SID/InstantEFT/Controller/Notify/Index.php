@@ -8,6 +8,8 @@
  */
 namespace SID\InstantEFT\Controller\Notify;
 
+require_once __DIR__ . '/../AbstractSID.php';
+
 class Index extends \SID\InstantEFT\Controller\AbstractSID
 {
 

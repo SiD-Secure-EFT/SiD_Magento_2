@@ -8,6 +8,8 @@
  */
 namespace SID\InstantEFT\Controller\Redirect;
 
+require_once __DIR__ . '/../AbstractSID.php';
+
 class Redirect extends \SID\InstantEFT\Controller\AbstractSID
 {
     protected $resultPageFactory;

@@ -15,7 +15,7 @@ use Magento\Framework\App\Request\InvalidRequestException;
 use Magento\Framework\App\RequestInterface;
 use SID\InstantEFT\Model;
 
-abstract class AbstractSID extends AppAction implements RedirectLoginInterface
+abstract class AbstractSIDM230 extends AppAction implements RedirectLoginInterface, CsrfAwareActionInterface
 {
     protected $_logger;
     protected $_checkoutTypes = [];
@@ -66,6 +66,23 @@ abstract class AbstractSID extends AppAction implements RedirectLoginInterface
         parent::__construct( $context );
         $parameters    = ['params' => [$this->_configMethod]];
         $this->_config = $this->_objectManager->create( $this->_configType, $parameters );
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function createCsrfValidationException(
+        RequestInterface $request
+    ): ?InvalidRequestException {
+        return null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function validateForCsrf(RequestInterface $request): ?bool
+    {
+        return true;
     }
 
     public function getConfigData( $field )
