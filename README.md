@@ -5,7 +5,7 @@ This is the SiD Instant EFT plugin for Magento 2. Please feel free to contact th
 
 ## Installation
 
-Please navigate to the [releases page](https://github.com/SiD-Instant-EFT/SiD_Magento_2/releases), download the latest release (v2.3.1) and unzip. You will them be able to follow the integration guide PDF which is included in the zip.
+Please navigate to the [releases page](https://github.com/SiD-Instant-EFT/SiD_Magento_2/releases), download the latest release (v2.3.2) and unzip. You will them be able to follow the integration guide PDF which is included in the zip.
 
 ## Collaboration
 
