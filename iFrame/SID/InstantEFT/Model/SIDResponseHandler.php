@@ -1,11 +1,12 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
  * Released under the GNU General Public License
  */
+
 namespace SID\InstantEFT\Model;
 
 class SIDResponseHandler
@@ -16,6 +17,7 @@ class SIDResponseHandler
     protected $_paymentFactory;
     protected $_paymentMethod;
     protected $_date;
+    protected $_sidConfig;
 
     public function __construct( \Psr\Log\LoggerInterface $logger,
         \Magento\Sales\Model\OrderFactory $orderFactory,
@@ -25,7 +27,8 @@ class SIDResponseHandler
         \Magento\Sales\Model\Order\Email\Sender\InvoiceSender $invoiceSender,
         \Magento\Sales\Model\Service\InvoiceService $invoiceService,
         \Magento\Sales\Model\Order\Email\Sender\OrderSender $OrderSender,
-        \Magento\Framework\Stdlib\DateTime\DateTime $date
+        \Magento\Framework\Stdlib\DateTime\DateTime $date,
+        \SID\InstantEFT\Helper\SidConfig $sidConfig
     ) {
         $this->_logger             = $logger;
         $this->_orderFactory       = $orderFactory;
@@ -36,6 +39,7 @@ class SIDResponseHandler
         $this->_transactionFactory = $transactionFactory;
         $this->_paymentFactory     = $paymentFactory;
         $this->_date               = $date;
+        $this->_sidConfig          = $sidConfig;
     }
 
     public function validateResponse( $sidResultData )
@@ -50,30 +54,33 @@ class SIDResponseHandler
             $sidErrMsg = 'Data received is empty';
         }
         if ( !$sidError ) {
-            $sid_status     = strtoupper( $sidResultData["SID_STATUS"] );
-            $sid_merchant   = $sidResultData["SID_MERCHANT"];
-            $sid_country    = $sidResultData["SID_COUNTRY"];
-            $sid_currency   = $sidResultData["SID_CURRENCY"];
-            $sid_reference  = $sidResultData["SID_REFERENCE"];
-            $sid_amount     = $sidResultData["SID_AMOUNT"];
-            $sid_bank       = $sidResultData["SID_BANK"];
-            $sid_date       = $sidResultData["SID_DATE"];
-            $sid_receiptno  = $sidResultData["SID_RECEIPTNO"];
-            $sid_tnxid      = $sidResultData["SID_TNXID"];
-            $sid_custom_01  = $sidResultData["SID_CUSTOM_01"];
-            $sid_custom_02  = $sidResultData["SID_CUSTOM_02"];
-            $sid_consistent = $sidResultData["SID_CONSISTENT"];
+            $sid_status     = strtoupper( isset( $sidResultData["SID_STATUS"] ) ? $sidResultData["SID_STATUS"] : '' );
+            $sid_merchant   = isset( $sidResultData["SID_MERCHANT"] ) ? $sidResultData["SID_MERCHANT"] : '';
+            $sid_country    = isset( $sidResultData["SID_COUNTRY"] ) ? $sidResultData["SID_COUNTRY"] : '';
+            $sid_currency   = isset( $sidResultData["SID_CURRENCY"] ) ? $sidResultData["SID_CURRENCY"] : '';
+            $sid_reference  = isset( $sidResultData["SID_REFERENCE"] ) ? $sidResultData["SID_REFERENCE"] : '';
+            $sid_amount     = isset( $sidResultData["SID_AMOUNT"] ) ? $sidResultData["SID_AMOUNT"] : '';
+            $sid_bank       = isset( $sidResultData["SID_BANK"] ) ? $sidResultData["SID_BANK"] : '';
+            $sid_date       = isset( $sidResultData["SID_DATE"] ) ? $sidResultData["SID_DATE"] : '';
+            $sid_receiptno  = isset( $sidResultData["SID_RECEIPTNO"] ) ? $sidResultData["SID_RECEIPTNO"] : '';
+            $sid_tnxid      = isset( $sidResultData["SID_TNXID"] ) ? $sidResultData["SID_TNXID"] : '';
+            $sid_custom_01  = isset( $sidResultData["SID_CUSTOM_01"] ) ? $sidResultData["SID_CUSTOM_01"] : '';
+            $sid_custom_02  = isset( $sidResultData["SID_CUSTOM_02"] ) ? $sidResultData["SID_CUSTOM_02"] : '';
+            $sid_custom_03  = isset( $sidResultData["SID_CUSTOM_03"] ) ? $sidResultData["SID_CUSTOM_03"] : '';
+            $sid_custom_04  = isset( $sidResultData["SID_CUSTOM_04"] ) ? $sidResultData["SID_CUSTOM_04"] : '';
+            $sid_custom_05  = isset( $sidResultData["SID_CUSTOM_05"] ) ? $sidResultData["SID_CUSTOM_05"] : '';
+            $sid_consistent = isset( $sidResultData["SID_CONSISTENT"] ) ? $sidResultData["SID_CONSISTENT"] : '';
 
-            $sid_secret       = $this->_paymentMethod->getConfigData( 'private_key' );
+            $sid_secret       = $this->_sidConfig->getConfigValue( 'private_key' );
             $consistent_check = strtoupper( hash( 'sha512', $sid_status . $sid_merchant . $sid_country . $sid_currency
                 . $sid_reference . $sid_amount . $sid_bank . $sid_date . $sid_receiptno
-                . $sid_tnxid . $sid_custom_01 . $sid_custom_02 . $sid_secret ) );
+                . $sid_tnxid . $sid_custom_01 . $sid_custom_02 . $sid_custom_03 . $sid_custom_04 . $sid_custom_05 . $sid_secret ) );
 
-            if ( $consistent_check != $sid_consistent ) {
+            if ( !hash_equals( $sid_consistent, $consistent_check ) ) {
                 $sidError  = true;
                 $sidErrMsg = 'Consistent is invalid.';
             }
-            if ( !$sidError && $sid_merchant != $this->_paymentMethod->getConfigData( "merchant_code" ) ) {
+            if ( !$sidError && $sid_merchant != $this->_sidConfig->getConfigValue( "merchant_code" ) ) {
                 $sidError  = true;
                 $sidErrMsg = 'Merchant code received does not match stores merchant code.';
             }
@@ -102,6 +109,7 @@ class SIDResponseHandler
 
     public function checkResponseAgainstSIDWebQueryService( $sidResultData, $notified = null, $redirected = null )
     {
+        $notified  = $this->_sidConfig->getConfigValue( 'enable_notify' ) == '1' ? true : false;
         $sidError  = false;
         $sidErrMsg = '';
         foreach ( $sidResultData as $key => $val ) {
@@ -112,14 +120,14 @@ class SIDResponseHandler
             $sidErrMsg = 'Data received is empty';
         }
         if ( !$sidError ) {
-            $sid_status    = $sidResultData["SID_STATUS"];
-            $sid_merchant  = $sidResultData["SID_MERCHANT"];
-            $sid_country   = $sidResultData["SID_COUNTRY"];
-            $sid_currency  = $sidResultData["SID_CURRENCY"];
-            $sid_reference = $sidResultData["SID_REFERENCE"];
-            $sid_amount    = $sidResultData["SID_AMOUNT"];
-            $sid_username  = $this->_paymentMethod->getConfigData( "username" );
-            $sid_password  = $this->_paymentMethod->getConfigData( "password" );
+            $sid_status    = isset( $sidResultData["SID_STATUS"] ) ? $sidResultData["SID_STATUS"] : '';
+            $sid_merchant  = isset( $sidResultData["SID_MERCHANT"] ) ? $sidResultData["SID_MERCHANT"] : '';
+            $sid_country   = isset( $sidResultData["SID_COUNTRY"] ) ? $sidResultData["SID_COUNTRY"] : '';
+            $sid_currency  = isset( $sidResultData["SID_CURRENCY"] ) ? $sidResultData["SID_CURRENCY"] : '';
+            $sid_reference = isset( $sidResultData["SID_REFERENCE"] ) ? $sidResultData["SID_REFERENCE"] : '';
+            $sid_amount    = isset( $sidResultData["SID_AMOUNT"] ) ? $sidResultData["SID_AMOUNT"] : '';
+            $sid_username  = $this->_sidConfig->getConfigValue( "username" );
+            $sid_password  = $this->_sidConfig->getConfigValue( "password" );
 
             $xml_string = '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
               <soap:Body>
@@ -131,8 +139,10 @@ class SIDResponseHandler
                 "Cache-Control: no-cache",
                 "Pragma: no-cache",
                 "SOAPAction: http://tempuri.org/sid_order_query",
-                "Content-length: " . strlen( $xml_string ) );
-            $url     = "https://" . $this->_paymentMethod->getSIDHost() . "/api/?wsdl";
+                "Content-length: " . strlen( $xml_string ),
+            );
+            $url = "https://" . $this->_paymentMethod->getSIDHost() . "/api/?wsdl";
+
             $soap_do = curl_init();
             curl_setopt( $soap_do, CURLOPT_URL, $url );
             curl_setopt( $soap_do, CURLOPT_CONNECTTIMEOUT, 10 );
@@ -176,33 +186,30 @@ class SIDResponseHandler
                         }
                         $dateCreated = null;
                         if ( $transaction->date_created && strlen( (string) $transaction->date_created ) > 3 ) {
-                            $dateCreated = strtotime( substr( (string) $transaction->date_created, 0, strlen( $transaction->date_created ) - 3 ) );
+                            $dateCreated = strtotime( substr( (string) $transaction->date_created, 0,
+                                strlen( $transaction->date_created ) - 3 ) );
                         }
                         $dateReady = null;
                         if ( $transaction->date_ready && strlen( (string) $transaction->date_ready ) > 3 ) {
-                            $dateReady = strtotime( substr( (string) $transaction->date_ready, 0, strlen( $transaction->date_ready ) - 3 ) );
+                            $dateReady = strtotime( substr( (string) $transaction->date_ready, 0,
+                                strlen( $transaction->date_ready ) - 3 ) );
                         }
                         $dateCompleted = null;
                         if ( $transaction->date_completed && strlen( (string) $transaction->date_completed ) > 3 ) {
-                            $dateCompleted = strtotime( substr( (string) $transaction->date_completed, 0, strlen( $transaction->date_completed ) - 3 ) );
+                            $dateCompleted = strtotime( substr( (string) $transaction->date_completed, 0,
+                                strlen( $transaction->date_completed ) - 3 ) );
                         }
                         $payment = $this->updatePayment( (string) $sid_order_query_response->data['signature'],
                             (string) $sid_order_query_response->data->outcome['errorcode'],
                             (string) $sid_order_query_response->data->outcome['errordescription'],
                             (string) $sid_order_query_response->data->outcome['errorsolution'],
-                            (string) $transaction->status,
-                            (string) $transaction->country->code,
-                            (string) $transaction->country->name,
-                            (string) $transaction->currency->code,
-                            (string) $transaction->currency->name,
-                            (string) $transaction->currency->symbol,
-                            (string) $transaction->bank->name,
-                            (float) $transaction->amount,
-                            (string) $transaction->reference,
-                            (string) $transaction->receiptno,
-                            (string) $transaction->tnxid,
-                            $dateCreated, $dateReady, $dateCompleted,
-                            $redirected, $notified );
+                            (string) $transaction->status, (string) $transaction->country->code,
+                            (string) $transaction->country->name, (string) $transaction->currency->code,
+                            (string) $transaction->currency->name, (string) $transaction->currency->symbol,
+                            (string) $transaction->bank->name, (float) $transaction->amount,
+                            (string) $transaction->reference, (string) $transaction->receiptno,
+                            (string) $transaction->tnxid, $dateCreated, $dateReady, $dateCompleted, $redirected,
+                            $notified );
                         if ( $payment->getStatus() == 'COMPLETED' ) {
                             $sidError  = false;
                             $sidErrMsg = '';
@@ -210,8 +217,16 @@ class SIDResponseHandler
                             if ( $order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT ) {
                                 $this->processPayment( $sidResultData, $notified );
                             }
-                        } else if ( $payment->getStatus() == 'CANCELLED' ) {
-                            $sidErrMsg = 'Payment cancelled';
+                        } else {
+                            if ( $payment->getStatus() == 'CANCELLED' ) {
+                                $sidErrMsg = 'Payment cancelled';
+                                $order     = $this->_orderFactory->create()->loadByIncrementId( $sid_reference );
+                                if ( $this->_sidConfig->getConfigValue( 'enable_notify' ) != '1' ) {
+                                    $order->addStatusHistoryComment( "Redirect Response, Transaction has been cancelled, SID_TNXID: " . $transaction->tnxid )->setIsCustomerNotified( false )->save();
+                                } else {
+                                    $order->addStatusHistoryComment( "Notify Response, Transaction has been cancelled, SID_TNXID: " . $transaction->tnxid )->setIsCustomerNotified( false )->save();
+                                }
+                            }
                         }
                         break;
                     }
@@ -226,10 +241,10 @@ class SIDResponseHandler
         return true;
     }
 
-    private function updatePayment( $signature, $errorCode, $errorDescription, $errorSolution, $status,
+    public function updatePayment( $signature, $errorCode, $errorDescription, $errorSolution, $status,
         $countryCode, $countryName, $currencyCode, $currencyName, $currencySymbol,
         $bankName, $amount, $reference, $receiptNo, $tnxid, $dateCreated, $dateReady,
-        $dateCompleted, $redirected, $notified ) {
+        $dateCompleted, $redirected = null, $notified = null ) {
         $payment = $this->_paymentFactory->create();
         $payment = $payment->load( $tnxid, 'tnxid' );
 
@@ -266,28 +281,27 @@ class SIDResponseHandler
 
     private function processPayment( $sidResultData, $notified )
     {
-        $sid_reference = $sidResultData["SID_REFERENCE"];
+        $sid_reference = isset( $sidResultData["SID_REFERENCE"] ) ? $sidResultData["SID_REFERENCE"] : '';
         if ( !$this->_order ) {
             $this->_order = $this->_orderFactory->create()->loadByIncrementId( $sid_reference );
         }
         if ( $this->_order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT ) {
-            $sid_status    = strtoupper( $sidResultData["SID_STATUS"] );
-            $sid_amount    = $sidResultData["SID_AMOUNT"];
-            $sid_bank      = $sidResultData["SID_BANK"];
-            $sid_receiptno = $sidResultData["SID_RECEIPTNO"];
-            $sid_tnxid     = $sidResultData["SID_TNXID"];
+            $sid_status    = strtoupper( isset( $sidResultData["SID_STATUS"] ) ? $sidResultData["SID_STATUS"] : '' );
+            $sid_amount    = isset( $sidResultData["SID_AMOUNT"] ) ? $sidResultData["SID_AMOUNT"] : '';
+            $sid_bank      = isset( $sidResultData["SID_BANK"] ) ? $sidResultData["SID_BANK"] : '';
+            $sid_receiptno = isset( $sidResultData["SID_RECEIPTNO"] ) ? $sidResultData["SID_RECEIPTNO"] : '';
+            $sid_tnxid     = isset( $sidResultData["SID_TNXID"] ) ? $sidResultData["SID_TNXID"] : '';
 
             $status = \Magento\Sales\Model\Order::STATE_PROCESSING;
-            if ( $this->_paymentMethod->getConfigData( 'Successful_Order_status' ) != "" ) {
-                $status = $this->_paymentMethod->getConfigData( 'Successful_Order_status' );
+            if ( $this->_sidConfig->getConfigValue( 'Successful_Order_status' ) != "" ) {
+                $status = $this->_sidConfig->getConfigValue( 'Successful_Order_status' );
             }
             $this->_order->setStatus( $status ); //configure the status
-            $this->_order->setState( $status )->save(); //try and configure the status
             $this->_order->save();
 
             $order = $this->_order;
 
-            if ( !$notified ) {
+            if ( $this->_sidConfig->getConfigValue( 'enable_notify' ) != '1' ) {
                 $order->addStatusHistoryComment( "Redirect Response, Transaction has been approved, SID_TNXID: " . $sid_tnxid )->setIsCustomerNotified( false )->save();
             } else {
                 $order->addStatusHistoryComment( "Notify Response, Transaction has been approved, SID_TNXID: " . $sid_tnxid )->setIsCustomerNotified( false )->save();
@@ -298,7 +312,8 @@ class SIDResponseHandler
 
             if ( $order_successful_email != '0' ) {
                 $this->OrderSender->send( $order );
-                $order->addStatusHistoryComment( __( 'Notified customer about order #%1.', $order->getId() ) )->setIsCustomerNotified( true )->save();
+                $order->addStatusHistoryComment( __( 'Notified customer about order #%1.',
+                    $order->getId() ) )->setIsCustomerNotified( true )->save();
             }
 
             // Capture invoice when payment is successfull
@@ -316,7 +331,8 @@ class SIDResponseHandler
             $send_invoice_email = $model->getConfigData( 'invoice_email' );
             if ( $send_invoice_email != '0' ) {
                 $this->invoiceSender->send( $invoice );
-                $order->addStatusHistoryComment( __( 'Notified customer about invoice #%1.', $invoice->getId() ) )->setIsCustomerNotified( true )->save();
+                $order->addStatusHistoryComment( __( 'Notified customer about invoice #%1.',
+                    $invoice->getId() ) )->setIsCustomerNotified( true )->save();
             }
 
             $payment = $this->_order->getPayment();
@@ -335,11 +351,11 @@ class SIDResponseHandler
     private function cancelOrder( $sidResultData )
     {
         if ( !$this->_order ) {
-            $sid_reference = $sidResultData["SID_REFERENCE"];
+            $sid_reference = isset( $sidResultData["SID_REFERENCE"] ) ? $sidResultData["SID_REFERENCE"] : '';
             $this->_order  = $this->_orderFactory->create()->loadByIncrementId( $sid_reference );
         }
         if ( $this->_order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT ) {
-            $sid_status = strtoupper( $sidResultData["SID_STATUS"] );
+            $sid_status = strtoupper( isset( $sidResultData["SID_STATUS"] ) ? $sidResultData["SID_STATUS"] : '' );
             $this->_order->addStatusHistoryComment( __( $sid_status ) )->setIsCustomerNotified( false );
             $this->_order->cancel()->save();
         }

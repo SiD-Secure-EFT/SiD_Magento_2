@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -45,7 +45,7 @@ class InstallSchema implements InstallSchemaInterface
             ->addColumn( 'redirected', Table::TYPE_DATETIME, null, ['nullable' => true], 'Time Redirected' )
             ->addColumn( 'time_stamp', Table::TYPE_DATETIME, null, ['nullable' => false], 'Time Stamp' )
             ->addIndex( $installer->getIdxName( 'sid_payment', ['reference'] ), ['reference'] )
-            ->setComment( 'SID Instant EFT Payments' );
+            ->setComment( 'SID Secure EFT Payments' );
 
         $installer->getConnection()->createTable( $table );
 

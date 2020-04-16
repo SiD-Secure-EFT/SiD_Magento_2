@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -8,10 +8,10 @@
  */
 namespace SID\InstantEFT\Model;
 
+use Magento\Framework\Data\Form\FormKey;
 use Magento\Quote\Model\Quote;
 use Magento\Sales\Model\Order\Payment;
 use Magento\Sales\Model\Order\Payment\Transaction;
-use Magento\Framework\Data\Form\FormKey;
 
 class SID extends \Magento\Payment\Model\Method\AbstractMethod
 {
@@ -115,7 +115,7 @@ class SID extends \Magento\Payment\Model\Method\AbstractMethod
         $countryCode   = $address->getCountryId();
         $orderId       = $order->getRealOrderId();
         $orderTotal    = $order->getGrandTotal();
-        $csfrFormKey    = $this->_formKey->getFormKey();
+        $csfrFormKey   = $this->_formKey->getFormKey();
         $consistent    = strtoupper( hash( 'sha512', $merchantCode . $currencyCode . $countryCode . $orderId . $orderTotal . $quoteId . $orderEntityId . $csfrFormKey . $privateKey ) );
 
         $fields = array(

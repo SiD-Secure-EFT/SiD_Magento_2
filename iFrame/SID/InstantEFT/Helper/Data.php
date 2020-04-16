@@ -1,14 +1,17 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
- * 
+ *
  * Released under the GNU General Public License
  */
+
 namespace SID\InstantEFT\Helper;
 
-class Data extends \Magento\Framework\App\Helper\AbstractHelper
+use Magento\Framework\App\Helper\AbstractHelper;
+
+class Data extends AbstractHelper
 {
     protected static $_shouldAskToCreateBillingAgreement = false;
     protected $_paymentData;
@@ -40,4 +43,5 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $result;
     }
+
 }

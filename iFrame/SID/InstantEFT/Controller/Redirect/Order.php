@@ -1,11 +1,12 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
  * Released under the GNU General Public License
  */
+
 namespace SID\InstantEFT\Controller\Redirect;
 
 use Magento\Framework\Controller\ResultFactory;
@@ -13,21 +14,11 @@ use Magento\Framework\Controller\ResultFactory;
 class Order extends \SID\InstantEFT\Controller\AbstractSID
 {
 
-    public function getOrder( $id )
-    {
-        return $this->orderRepository->get( $id );
-    }
-
     public function createOrder()
     {
         $quote = $this->setPaymentMethod();
 
         return $this->onePage->saveOrder();
-    }
-
-    public function getQuote()
-    {
-        return $this->onePage->getQuote();
     }
 
     public function setPaymentMethod()
@@ -46,6 +37,11 @@ class Order extends \SID\InstantEFT\Controller\AbstractSID
         return $quote;
     }
 
+    public function getQuote()
+    {
+        return $this->onePage->getQuote();
+    }
+
     public function execute()
     {
         $order = $this->getOrder( $_POST['order_id'] );
@@ -62,6 +58,11 @@ class Order extends \SID\InstantEFT\Controller\AbstractSID
         return $response;
     }
 
+    public function getOrder( $id )
+    {
+        return $this->orderRepository->get( $id );
+    }
+
     public function getStandardCheckoutFormFields( $order )
     {
         $model         = $this->_paymentMethod;
@@ -74,7 +75,8 @@ class Order extends \SID\InstantEFT\Controller\AbstractSID
         $countryCode   = $address->getCountryId();
         $orderId       = $order->getRealOrderId();
         $orderTotal    = $order->getGrandTotal();
-        $consistent    = strtoupper( hash( 'sha512', $merchantCode . $currencyCode . $countryCode . $orderId . $orderTotal . $quoteId . $orderEntityId . $privateKey ) );
+        $consistent    = strtoupper( hash( 'sha512',
+            $merchantCode . $currencyCode . $countryCode . $orderId . $orderTotal . $quoteId . $orderEntityId . $privateKey ) );
 
         $fields = "";
         $fields = array(

@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -14,7 +14,7 @@ class Index extends \SID\InstantEFT\Controller\Adminhtml\Payment
     {
         $resultPage = $this->_initAction();
         $resultPage->addBreadcrumb( __( 'Search Payments' ), __( 'Search Payments' ) );
-        $resultPage->getConfig()->getTitle()->prepend( __( 'SID Instant EFT Payments' ) );
+        $resultPage->getConfig()->getTitle()->prepend( __( 'SID Secure EFT Payments' ) );
         return $resultPage;
     }
 }

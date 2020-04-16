@@ -1,11 +1,11 @@
 # SiD_Magento_2
-## SiD Secure EFT plugin v2.3.2 for Magento v2.3.2
+## SiD Secure EFT plugin v2.3.3 for Magento v2.3.4
 
 This is the SiD Secure EFT plugin for Magento 2. Please feel free to contact the SiD Secure EFT support team at support@sidpayment.com should you require any assistance.
 
 ## Installation
 
-Please navigate to the [releases page](https://github.com/SiD-Instant-EFT/SiD_Magento_2/releases), download the latest release (v2.3.2) and unzip. You will them be able to follow the integration guide PDF which is included in the zip.
+Please navigate to the [releases page](https://github.com/SiD-Instant-EFT/SiD_Magento_2/releases), download the latest release (v2.3.4) and unzip. You will them be able to follow the integration guide PDF which is included in the zip.
 
 ## Collaboration
 

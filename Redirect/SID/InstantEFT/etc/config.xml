@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <!--
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
- * 
+ *
  * Released under the GNU General Public License
  */
 -->
@@ -13,10 +13,10 @@
         <payment>
             <sid>
                 <active>1</active>
-                <title>SID Instant EFT</title>
+                <title>SID Secure EFT</title>
                 <allowspecific>0</allowspecific>
                 <currency>ZAR</currency>
-                <instructions>Pay with SID Instant EFT</instructions>
+                <instructions>Pay with SID Secure EFT</instructions>
                 <payment_action>Authorization</payment_action>
                 <model>SID\InstantEFT\Model\SID</model>
                 <is_gateway>0</is_gateway>
@@ -26,6 +26,7 @@
                 <can_void>1</can_void>
                 <can_refund>0</can_refund>
                 <can_use_for_multishipping>1</can_use_for_multishipping>
+                <enable_notify>1</enable_notify>
             </sid>
         </payment>
     </default>

@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
- * 
+ *
  * Released under the GNU General Public License
  */
 define(['jquery', 'Magento_Checkout/js/view/payment/default', 'Magento_Checkout/js/action/place-order', 'Magento_Checkout/js/action/select-payment-method', 'Magento_Customer/js/model/customer', 'Magento_Checkout/js/checkout-data', 'Magento_Checkout/js/model/payment/additional-validators', 'mage/url'], function($, Component, placeOrderAction, selectPaymentMethodAction, customer, checkoutData, additionalValidators, url) {

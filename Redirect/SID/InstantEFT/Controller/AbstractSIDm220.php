@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -10,9 +10,6 @@ namespace SID\InstantEFT\Controller;
 
 use Magento\Checkout\Controller\Express\RedirectLoginInterface;
 use Magento\Framework\App\Action\Action as AppAction;
-use Magento\Framework\App\CsrfAwareActionInterface;
-use Magento\Framework\App\Request\InvalidRequestException;
-use Magento\Framework\App\RequestInterface;
 use SID\InstantEFT\Model;
 
 abstract class AbstractSIDM220 extends AppAction implements RedirectLoginInterface
@@ -36,6 +33,11 @@ abstract class AbstractSIDM220 extends AppAction implements RedirectLoginInterfa
     protected $_paymentMethod;
     protected $_date;
     protected $_sidResponseHandler;
+    protected $orderRepository;
+    protected $onepage;
+    protected $_orderCollectionFactory;
+    protected $_sidConfig;
+    protected $_paymentFactory;
 
     public function __construct( \Magento\Framework\App\Action\Context $context,
         \Magento\Framework\View\Result\PageFactory $pageFactory,
@@ -49,20 +51,29 @@ abstract class AbstractSIDM220 extends AppAction implements RedirectLoginInterfa
         \Magento\Framework\DB\TransactionFactory $transactionFactory,
         \SID\InstantEFT\Model\SID $paymentMethod,
         \Magento\Framework\Stdlib\DateTime\DateTime $date,
-        \SID\InstantEFT\Model\SIDResponseHandler $sidResponseHandler ) {
-        
-        $this->_logger             = $logger;
-        $this->_customerSession    = $customerSession;
-        $this->_checkoutSession    = $checkoutSession;
-        $this->_orderFactory       = $orderFactory;
-        $this->sidSession          = $sidSession;
-        $this->_urlHelper          = $urlHelper;
-        $this->_customerUrl        = $customerUrl;
-        $this->pageFactory         = $pageFactory;
-        $this->_transactionFactory = $transactionFactory;
-        $this->_paymentMethod      = $paymentMethod;
-        $this->_date               = $date;
-        $this->_sidResponseHandler = $sidResponseHandler;
+        \SID\InstantEFT\Model\SIDResponseHandler $sidResponseHandler,
+        \Magento\Sales\Model\OrderNotifier $OrderNotifier,
+        \Magento\Sales\Model\ResourceModel\Order\CollectionFactory $orderCollectionFactory,
+        \SID\InstantEFT\Helper\SidConfig $sidConfig,
+        \SID\InstantEFT\Model\PaymentFactory $paymentFactory ) {
+
+        $this->_logger                 = $logger;
+        $this->_customerSession        = $customerSession;
+        $this->_checkoutSession        = $checkoutSession;
+        $this->_orderFactory           = $orderFactory;
+        $this->sidSession              = $sidSession;
+        $this->_urlHelper              = $urlHelper;
+        $this->_customerUrl            = $customerUrl;
+        $this->pageFactory             = $pageFactory;
+        $this->_transactionFactory     = $transactionFactory;
+        $this->_paymentMethod          = $paymentMethod;
+        $this->_date                   = $date;
+        $this->_sidResponseHandler     = $sidResponseHandler;
+        $this->_orderNotifier          = $OrderNotifier;
+        $this->_orderCollectionFactory = $orderCollectionFactory;
+        $this->_sidConfig              = $sidConfig;
+        $this->_paymentFactory         = $paymentFactory;
+
         parent::__construct( $context );
         $parameters    = ['params' => [$this->_configMethod]];
         $this->_config = $this->_objectManager->create( $this->_configType, $parameters );
