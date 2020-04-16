@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="sidcron">
+        <job instance="SID\InstantEFT\Cron\CronQuery" method="execute" name="sid_instanteft_query">
+            <schedule>0,10,20,30,40,50 * * * *</schedule>
+        </job>
+    </group>
+</config>

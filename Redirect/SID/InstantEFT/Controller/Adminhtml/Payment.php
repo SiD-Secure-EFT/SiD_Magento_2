@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -34,7 +34,7 @@ abstract class Payment extends \Magento\Backend\App\AbstractAction
     {
         $resultPage = $this->resultPageFactory->create();
         $resultPage->setActiveMenu( 'SID_InstantEFT::payments' );
-        $resultPage->addBreadcrumb( __( 'SID Instant EFT Payments' ), __( 'SID Instant EFT Payments' ) );
+        $resultPage->addBreadcrumb( __( 'SID Secure EFT Payments' ), __( 'SID Secure EFT Payments' ) );
         return $resultPage;
     }
 

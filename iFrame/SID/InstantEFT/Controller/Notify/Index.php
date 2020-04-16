@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2018 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -8,28 +8,11 @@
  */
 namespace SID\InstantEFT\Controller\Notify;
 
-class Index extends \SID\InstantEFT\Controller\AbstractSID
-{
-    public function execute()
-    {
-        try {
-            $this->_logger->debug( __METHOD__ . ' : ' . print_r( $_POST, true ) );
-            if ( $this->_sidResponseHandler->validateResponse( $_POST ) ) {
-                // Get latest status of order before posting in case of multiple responses
-                $sid_reference = $_POST["SID_REFERENCE"];
-                $order         = $this->_orderFactory->create()->loadByIncrementId( $sid_reference );
-                if ( $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService( $_POST, true, $this->_date->gmtDate() ) ) {
-                    $this->_logger->debug( __METHOD__ . ' : Payment Successful' );
-                } else {
-                    $this->_logger->debug( __METHOD__ . ' : Payment Unsuccessful' );
-                }
-            };
-            header( 'HTTP/1.0 200 OK' );
-            flush();
-        } catch ( \Exception $e ) {
-            $this->_logger->debug( __METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString() );
-            $this->messageManager->addExceptionMessage( $e, __( 'We can\'t start SID Checkout.' ) );
-            $this->_redirect( 'checkout/cart' );
-        }
-    }
+/**
+ * Check for existence of CsrfAwareActionInterface - only v2.3.0+
+ */
+if ( interface_exists( "Magento\Framework\App\CsrfAwareActionInterface" ) ) {
+    class_alias( 'SID\InstantEFT\Controller\Notify\Indexm230', 'SID\InstantEFT\Controller\Notify\Index' );
+} else {
+    class_alias( 'SID\InstantEFT\Controller\Notify\Indexm220', 'SID\InstantEFT\Controller\Notify\Index' );
 }

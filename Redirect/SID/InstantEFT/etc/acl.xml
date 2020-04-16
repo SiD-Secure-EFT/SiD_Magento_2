@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <!--
 /*
- * Copyright (c) 2019 PayGate (Pty) Ltd
+ * Copyright (c) 2020 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
- * 
+ *
  * Released under the GNU General Public License
  */
 -->
@@ -14,7 +14,7 @@
             <resource id="Magento_Backend::admin">
                 <resource id="Magento_Sales::sales" title="Sales" sortOrder="20">
                     <resource id="Magento_Sales::sales_operation">
-                        <resource id="SID_InstantEFT::sid_payments" title="SID Instant EFT Payments" sortOrder="10" />
+                        <resource id="SID_InstantEFT::sid_payments" title="SID Secure EFT Payments" sortOrder="10" />
                     </resource>
                 </resource>
             </resource>
