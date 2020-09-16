@@ -9,27 +9,58 @@
 namespace SID\InstantEFT\Helper;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\StoreManagerInterface;
 
+/**
+ * Class SidConfig
+ * @package SID\InstantEFT\Helper
+ */
 class SidConfig
 {
-    protected $_scopeConfig;
     protected $path = 'payment/sid/';
 
-    public function __construct( \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig )
+    /**
+     * @var ScopeConfigInterface
+     */
+    protected $scopeConfig;
+
+    /**
+     * @var StoreManagerInterface
+     */
+    protected $storeManager;
+
+    /**
+     * SidConfig constructor.
+     * @param ScopeConfigInterface $scopeConfig
+     * @param StoreManagerInterface $storeManager
+     */
+    public function __construct( ScopeConfigInterface $scopeConfig, StoreManagerInterface $storeManager )
     {
-        $this->_scopeConfig = $scopeConfig;
+        $this->scopeConfig  = $scopeConfig;
+        $this->storeManager = $storeManager;
     }
 
     /**
-     * @inheritDoc
+     * @param $path
+     * @param string $scopeType
+     * @param null $scopeCode
      */
-    public function isSetFlag( $path, $scopeType = ScopeConfigInterface::SCOPE_TYPE_DEFAULT, $scopeCode = null )
+    public function isSetFlag( $path, $scopeType = ScopeInterface::SCOPE_STORE, $scopeCode = null )
     {
         // TODO: Implement isSetFlag() method.
     }
 
+    /**
+     * @param $key
+     * @param int $storeId
+     * @return mixed
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
     public function getConfigValue( $key )
     {
-        return $this->_scopeConfig->getValue( $this->path . $key );
+        $storeId = $this->storeManager->getStore()->getId();
+
+        return $this->scopeConfig->getValue( $this->path . $key, ScopeInterface::SCOPE_STORE, $storeId );
     }
 }
