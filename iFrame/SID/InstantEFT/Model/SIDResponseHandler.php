@@ -78,11 +78,11 @@ class SIDResponseHandler
 
             if ( !hash_equals( $sid_consistent, $consistent_check ) ) {
                 $sidError  = true;
-                $sidErrMsg = 'Consistent is invalid.';
+                $sidErrMsg .= 'Consistent is invalid. ';
             }
             if ( !$sidError && $sid_merchant != $this->_sidConfig->getConfigValue( "merchant_code" ) ) {
                 $sidError  = true;
-                $sidErrMsg = 'Merchant code received does not match stores merchant code.';
+                $sidErrMsg .= 'Merchant code received does not match stores merchant code. ';
             }
             if ( !$sidError ) {
                 if ( !$this->_order ) {
@@ -90,18 +90,18 @@ class SIDResponseHandler
                 }
                 if ( !$this->_order ) {
                     $sidError  = true;
-                    $sidErrMsg = 'Order not found.';
+                    $sidErrMsg .= 'Order not found. ';
                 }
                 if ( !$sidError ) {
                     if ( (float) $sid_amount != (float) $this->_order->getGrandTotal() ) {
                         $sidError  = true;
-                        $sidErrMsg = 'Amount paid does not match order amount.';
+                        $sidErrMsg .= 'Amount paid does not match order amount. ';
                     }
                 }
             }
         }
         if ( $sidError ) {
-            $this->_logger->debug( __METHOD__ . ' : Error occurred: ' . $sidErrMsg );
+            $this->_logger->debug( __METHOD__ . ' : Error occurred: ' . trim($sidErrMsg) );
             return false;
         }
         return true;
