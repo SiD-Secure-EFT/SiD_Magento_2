@@ -1,6 +1,0 @@
-=====================================
-Date	  : Version: Description
-=====================================
-
-2020-09-16: v2.3.4 : Fix scope config issues for multi-stores.
-                     Improve error handling.
