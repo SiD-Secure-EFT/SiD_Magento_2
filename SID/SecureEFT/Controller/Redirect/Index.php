@@ -9,7 +9,12 @@
 
 namespace SID\SecureEFT\Controller\Redirect;
 
-class Index extends \SID\SecureEFT\Controller\AbstractSID
+use Exception;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Sales\Model\Order\Payment\Transaction;
+use SID\SecureEFT\Controller\AbstractSID;
+
+class Index extends AbstractSID
 {
     const CARTPATH = "checkout/cart";
     protected $resultPageFactory;
@@ -39,14 +44,14 @@ class Index extends \SID\SecureEFT\Controller\AbstractSID
                 }
                 if ( ! $payment_successful) {
                     $this->restoreQuote();
-                    throw new \Magento\Framework\Exception\LocalizedException(__('Your payment was unsuccessful'));
+                    throw new LocalizedException(__('Your payment was unsuccessful'));
                 }
-            } catch (\Magento\Framework\Exception\LocalizedException $e) {
+            } catch (LocalizedException $e) {
                 $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage());
                 $this->messageManager->addExceptionMessage($e, $e->getMessage());
                 $this->restoreQuote();
                 $this->_redirect(self::CARTPATH);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString());
                 $this->messageManager->addExceptionMessage($e, __('We can\'t start SID Checkout.'));
                 $this->restoreQuote();
@@ -70,18 +75,26 @@ class Index extends \SID\SecureEFT\Controller\AbstractSID
 
                 if ($verified && $data['SID_STATUS'] == 'COMPLETED') {
                     $payment_successful = true;
+                    if ($this->_sidResponseHandler->validateResponse(
+                            $data
+                        ) && $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService(
+                            $data,
+                            $this->_date->gmtDate(),
+                            false
+                        )) {
+                    }
                     $this->_redirect('checkout/onepage/success');
                 }
                 if ( ! $payment_successful) {
                     $this->restoreQuote();
-                    throw new \Magento\Framework\Exception\LocalizedException(__('Your payment was unsuccessful'));
+                    throw new LocalizedException(__('Your payment was unsuccessful'));
                 }
-            } catch (\Magento\Framework\Exception\LocalizedException $e) {
+            } catch (LocalizedException $e) {
                 $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage());
                 $this->messageManager->addExceptionMessage($e, $e->getMessage());
                 $this->restoreQuote();
                 $this->_redirect(self::CARTPATH);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString());
                 $this->messageManager->addExceptionMessage($e, __('We can\'t start SID Checkout.'));
                 $this->restoreQuote();
@@ -110,7 +123,7 @@ class Index extends \SID\SecureEFT\Controller\AbstractSID
             $payment->setLastTransId($paymentData['txn_id'])
                     ->setTransactionId($paymentData['txn_id'])
                     ->setAdditionalInformation(
-                        [\Magento\Sales\Model\Order\Payment\Transaction::RAW_DETAILS => (array)$paymentData]
+                        [Transaction::RAW_DETAILS => (array)$paymentData]
                     );
             $formatedPrice = $order->getBaseCurrency()->formatTxt(
                 $order->getGrandTotal()
@@ -123,11 +136,11 @@ class Index extends \SID\SecureEFT\Controller\AbstractSID
                                  ->setOrder($order)
                                  ->setTransactionId($paymentData['txn_id'])
                                  ->setAdditionalInformation(
-                                     [\Magento\Sales\Model\Order\Payment\Transaction::RAW_DETAILS => (array)$paymentData['additional_data']]
+                                     [Transaction::RAW_DETAILS => (array)$paymentData['additional_data']]
                                  )
                                  ->setFailSafe(true)
                 //build method creates the transaction and returns the object
-                                 ->build(\Magento\Sales\Model\Order\Payment\Transaction::TYPE_CAPTURE);
+                                 ->build(Transaction::TYPE_CAPTURE);
 
             $payment->addTransactionCommentsToOrder(
                 $transaction,
@@ -138,7 +151,7 @@ class Index extends \SID\SecureEFT\Controller\AbstractSID
             $order->save();
 
             return $transaction->save()->getTransactionId();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->_logger->error($e->getMessage());
         }
     }
@@ -150,23 +163,27 @@ class Index extends \SID\SecureEFT\Controller\AbstractSID
 
     public function setlastOrderDetails()
     {
-        $orderId    = $this->order->getId();
-        $customerId = $this->order->getCustomerId();
-        $quoteId    = $this->order->getQuoteId();
+        $order       = $this->order;
+        $orderId     = $order->getId();
+        $customerId  = $order->getCustomerId();
+        $quoteId     = $order->getQuoteId();
+        $incrementId = $order->getIncrementId();
         $this->_checkoutSession->setData('last_order_id', $orderId);
-        $this->_checkoutSession->setData('last_success_quote_id', $quoteId);
         $this->_checkoutSession->setData('last_quote_id', $quoteId);
-        $this->_checkoutSession->setData('last_real_order_id', $orderId);
+        $this->_checkoutSession->setData('last_success_quote_id', $quoteId);
+        $this->_checkoutSession->setData('last_real_order_id', $incrementId);
         $_SESSION['customer_base']['customer_id']           = $customerId;
         $_SESSION['default']['visitor_data']['customer_id'] = $customerId;
         $_SESSION['customer_base']['customer_id']           = $customerId;
     }
 
-    public function restoreQuote() {
-        $orderId     = $this->order->getId();
-        $this->quote = $this->_quoteFactory->create()->loadByIdWithoutStore($this->order->getQuoteId());
-        $this->quote->setIsActive(true)->setReservedOrderId($orderId)->save();
-        $this->_checkoutSession->replaceQuote($this->quote);
+    public function restoreQuote()
+    {
+        $order = $this->order;
+        $quote = $this->quoteRepository->get($order->getQuoteId());
+        $quote->setIsActive(1)->setReservedOrderId(null);
+        $this->quoteRepository->save($quote);
+        $this->_checkoutSession->replaceQuote($quote)->unsLastRealOrderId();
     }
 
 }

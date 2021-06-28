@@ -9,14 +9,15 @@
 
 namespace SID\SecureEFT\Model;
 
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Payment\Model\Method\ConfigInterface;
 use Magento\Payment\Model\MethodInterface;
 use Magento\Store\Model\ScopeInterface;
 
 abstract class AbstractConfig implements ConfigInterface
 {
-    const PAYMENT_ACTION_SALE = 'Sale';
-    const PAYMENT_ACTION_AUTH = 'Authorization';
+    const PAYMENT_ACTION_SALE  = 'Sale';
+    const PAYMENT_ACTION_AUTH  = 'Authorization';
     const PAYMENT_ACTION_ORDER = 'Order';
     public $_scopeConfig;
     protected $_methodCode;
@@ -24,7 +25,7 @@ abstract class AbstractConfig implements ConfigInterface
     protected $pathPattern;
     protected $methodInstance;
 
-    public function __construct(\Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig)
+    public function __construct(ScopeConfigInterface $scopeConfig)
     {
         $this->_scopeConfig = $scopeConfig;
     }

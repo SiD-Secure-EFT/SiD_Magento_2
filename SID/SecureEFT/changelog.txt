@@ -2,11 +2,18 @@
 Date	  : Version: Description
 =====================================
 
+2021-06-28: v2.4.1 : Fix cron query method not firing as expected on some configurations.
+                     Fix 'Fetch' query method not updating order status from backend.
+                     Remove redirect button.
+                     Code refactor and format.
+                     Improve IPN reliability.
+                     Fix missing order information after successful payment.
+
 2021-05-28: v2.4.0 : Add compatibility with Magento 2.4.
-                   : Save payment transaction data to order.
-                   : Remove iFrame.
-                   : Code quality improve.
-                   : Change namespace from InstantEFT to SecureEFT.
+                     Save payment transaction data to order.
+                     Remove iFrame.
+                     Code quality improve.
+                     Change namespace from InstantEFT to SecureEFT.
                   
 2020-09-16: v2.3.4 : Fix scope config issues for multi-stores.
                      Improve error handling.

@@ -9,7 +9,9 @@
 
 namespace SID\SecureEFT\Model\ResourceModel\Payment;
 
-class Collection extends \Magento\Framework\Model\ResourceModel\Db\Collection\AbstractCollection
+use Magento\Framework\Model\ResourceModel\Db\Collection\AbstractCollection;
+
+class Collection extends AbstractCollection
 {
     protected $_idFieldName = 'payment_id';
 
