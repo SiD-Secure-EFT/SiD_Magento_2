@@ -9,7 +9,11 @@
 
 namespace SID\SecureEFT\Helper;
 
-class Data extends \Magento\Framework\App\Helper\AbstractHelper
+use Magento\Framework\App\Config\BaseFactory;
+use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\App\Helper\Context;
+
+class Data extends AbstractHelper
 {
     protected static $_shouldAskToCreateBillingAgreement = false;
     protected $_paymentData;
@@ -17,9 +21,9 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     private $configFactory;
 
     public function __construct(
-        \Magento\Framework\App\Helper\Context $context,
+        Context $context,
         \Magento\Payment\Helper\Data $paymentData,
-        \Magento\Framework\App\Config\BaseFactory $configFactory,
+        BaseFactory $configFactory,
         array $methodCodes
     ) {
         $this->_paymentData  = $paymentData;

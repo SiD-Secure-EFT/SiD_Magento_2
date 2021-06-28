@@ -9,7 +9,9 @@
 
 namespace SID\SecureEFT\Controller\Adminhtml\Payment;
 
-class Index extends \SID\SecureEFT\Controller\Adminhtml\Payment
+use SID\SecureEFT\Controller\Adminhtml\Payment;
+
+class Index extends Payment
 {
     public function execute()
     {

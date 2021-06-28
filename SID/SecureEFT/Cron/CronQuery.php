@@ -12,6 +12,7 @@ namespace SID\SecureEFT\Cron;
 use DateInterval;
 use DateTime;
 use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\Area;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Invoice;
@@ -19,10 +20,7 @@ use SID\SecureEFT\Controller\AbstractSID;
 
 class CronQuery extends AbstractSID
 {
-    /**
-     * @var OrderRepositoryInterface
-     */
-    protected $orderRepository;
+
     /**
      * @var SearchCriteriaBuilder
      */
@@ -30,26 +28,31 @@ class CronQuery extends AbstractSID
 
     public function execute()
     {
-        $cutoffTime = (new DateTime())->sub(new DateInterval('PT10M'))->format('Y-m-d H:i:s');
-        $this->_logger->info('Cutoff: ' . $cutoffTime);
-        $ocf = $this->_orderCollectionFactory->create();
-        $ocf->addAttributeToSelect('entity_id');
-        $ocf->addAttributeToFilter('status', ['eq' => 'pending_payment']);
-        $ocf->addAttributeToFilter('created_at', ['lt' => $cutoffTime]);
-        $ocf->addAttributeToFilter('updated_at', ['lt' => $cutoffTime]);
-        $orderIds = $ocf->getData();
+        $this->_state->emulateAreaCode(
+            Area::AREA_FRONTEND,
+            function () {
+                $cutoffTime = (new DateTime())->sub(new DateInterval('PT10M'))->format('Y-m-d H:i:s');
+                $this->_logger->info('Cutoff: ' . $cutoffTime);
+                $ocf = $this->_orderCollectionFactory->create();
+                $ocf->addAttributeToSelect('entity_id');
+                $ocf->addAttributeToFilter('status', ['eq' => 'pending_payment']);
+                $ocf->addAttributeToFilter('created_at', ['lt' => $cutoffTime]);
+                $ocf->addAttributeToFilter('updated_at', ['lt' => $cutoffTime]);
+                $orderIds = $ocf->getData();
 
-        $this->_logger->info('Orders for cron: ' . json_encode($orderIds));
+                $this->_logger->info('Orders for cron: ' . json_encode($orderIds));
 
-        foreach ($orderIds as $orderId) {
-            $order                  = $this->orderRepository->get($orderId['entity_id']);
-            $orderquery['orderId']  = $order->getRealOrderId();
-            $orderquery['country']  = $order->getBillingAddress()->getCountryId();
-            $orderquery['currency'] = $order->getOrderCurrencyCode();
-            $orderquery['amount']   = $order->getGrandTotal();
+                foreach ($orderIds as $orderId) {
+                    $order                  = $this->orderRepository->get($orderId['entity_id']);
+                    $orderquery['orderId']  = $order->getRealOrderId();
+                    $orderquery['country']  = $order->getBillingAddress()->getCountryId();
+                    $orderquery['currency'] = $order->getOrderCurrencyCode();
+                    $orderquery['amount']   = $order->getGrandTotal();
 
-            $this->doSoapQuery($orderquery);
-        }
+                    $this->doSoapQuery($orderquery);
+                }
+            }
+        );
     }
 
     protected function doSoapQuery($orderquery)
@@ -249,7 +252,7 @@ class CronQuery extends AbstractSID
                     break;
             }
 
-            $order->setStatus($status); //configure the status
+            $order->setStatus($status);
             $order->save();
 
             if ($sid_status == 'COMPLETED') {

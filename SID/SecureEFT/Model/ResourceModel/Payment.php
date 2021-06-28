@@ -9,13 +9,18 @@
 
 namespace SID\SecureEFT\Model\ResourceModel;
 
-class Payment extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
+use Magento\Framework\Model\AbstractModel;
+use Magento\Framework\Model\ResourceModel\Db\AbstractDb;
+use Magento\Framework\Model\ResourceModel\Db\Context;
+use Magento\Framework\Stdlib\DateTime\DateTime;
+
+class Payment extends AbstractDb
 {
     protected $_date;
 
     public function __construct(
-        \Magento\Framework\Model\ResourceModel\Db\Context $context,
-        \Magento\Framework\Stdlib\DateTime\DateTime $date,
+        Context $context,
+        DateTime $date,
         $resourcePrefix = null
     ) {
         parent::__construct($context, $resourcePrefix);
@@ -27,7 +32,7 @@ class Payment extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         $this->_init('sid_instant_eft_payment', 'payment_id');
     }
 
-    protected function _beforeSave(\Magento\Framework\Model\AbstractModel $object)
+    protected function _beforeSave(AbstractModel $object)
     {
         if ($object->isObjectNew() && ! $object->getTimeStamp()) {
             $object->setTimeStamp($this->_date->gmtDate());

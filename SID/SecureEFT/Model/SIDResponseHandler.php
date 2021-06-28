@@ -9,7 +9,19 @@
 
 namespace SID\SecureEFT\Model;
 
-class SIDResponseHandler extends \SID\SecureEFT\Controller\AbstractSID
+use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Stdlib\DateTime\DateTime;
+use Magento\Sales\Model\Order;
+use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
+use Magento\Sales\Model\Order\Email\Sender\OrderSender;
+use Magento\Sales\Model\Order\Invoice;
+use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\Service\InvoiceService;
+use Psr\Log\LoggerInterface;
+use SID\SecureEFT\Controller\AbstractSID;
+use SID\SecureEFT\Helper\SidConfig;
+
+class SIDResponseHandler extends AbstractSID
 {
     protected $_order;
     protected $_orderFactory;
@@ -20,16 +32,16 @@ class SIDResponseHandler extends \SID\SecureEFT\Controller\AbstractSID
     protected $_sidConfig;
 
     public function __construct(
-        \Psr\Log\LoggerInterface $logger,
-        \Magento\Sales\Model\OrderFactory $orderFactory,
-        \Magento\Framework\DB\TransactionFactory $transactionFactory,
-        \SID\SecureEFT\Model\PaymentFactory $paymentFactory,
-        \SID\SecureEFT\Model\SID $paymentMethod,
-        \Magento\Sales\Model\Order\Email\Sender\InvoiceSender $invoiceSender,
-        \Magento\Sales\Model\Service\InvoiceService $invoiceService,
-        \Magento\Sales\Model\Order\Email\Sender\OrderSender $OrderSender,
-        \Magento\Framework\Stdlib\DateTime\DateTime $date,
-        \SID\SecureEFT\Helper\SidConfig $sidConfig
+        LoggerInterface $logger,
+        OrderFactory $orderFactory,
+        TransactionFactory $transactionFactory,
+        PaymentFactory $paymentFactory,
+        SID $paymentMethod,
+        InvoiceSender $invoiceSender,
+        InvoiceService $invoiceService,
+        OrderSender $OrderSender,
+        DateTime $date,
+        SidConfig $sidConfig
     ) {
         $this->_logger             = $logger;
         $this->_orderFactory       = $orderFactory;
@@ -247,7 +259,7 @@ class SIDResponseHandler extends \SID\SecureEFT\Controller\AbstractSID
                             $sidError  = false;
                             $sidErrMsg = '';
                             $order     = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
-                            if ($order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT) {
+                            if ($order->getStatus() === Order::STATE_PENDING_PAYMENT) {
                                 $this->processPayment($sidResultData);
                             }
                         } else {
@@ -343,14 +355,14 @@ class SIDResponseHandler extends \SID\SecureEFT\Controller\AbstractSID
         if ( ! $this->_order) {
             $this->_order = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
         }
-        if ($this->_order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT) {
+        if ($this->_order->getStatus() === Order::STATE_PENDING_PAYMENT) {
             $sid_status    = strtoupper(isset($sidResultData["SID_STATUS"]) ? $sidResultData["SID_STATUS"] : '');
             $sid_amount    = isset($sidResultData["SID_AMOUNT"]) ? $sidResultData["SID_AMOUNT"] : '';
             $sid_bank      = isset($sidResultData["SID_BANK"]) ? $sidResultData["SID_BANK"] : '';
             $sid_receiptno = isset($sidResultData["SID_RECEIPTNO"]) ? $sidResultData["SID_RECEIPTNO"] : '';
             $sid_tnxid     = isset($sidResultData["SID_TNXID"]) ? $sidResultData["SID_TNXID"] : '';
 
-            $status = \Magento\Sales\Model\Order::STATE_PROCESSING;
+            $status = Order::STATE_PROCESSING;
             if ($this->_sidConfig->getConfigValue('Successful_Order_status') != "") {
                 $status = $this->_sidConfig->getConfigValue('Successful_Order_status');
             }
@@ -384,7 +396,7 @@ class SIDResponseHandler extends \SID\SecureEFT\Controller\AbstractSID
 
             // Capture invoice when payment is successfull
             $invoice = $this->_invoiceService->prepareInvoice($order);
-            $invoice->setRequestedCaptureCase(\Magento\Sales\Model\Order\Invoice::CAPTURE_ONLINE);
+            $invoice->setRequestedCaptureCase(Invoice::CAPTURE_ONLINE);
             $invoice->register();
 
             // Save the invoice to the order
@@ -423,7 +435,7 @@ class SIDResponseHandler extends \SID\SecureEFT\Controller\AbstractSID
             $sid_reference = isset($sidResultData["SID_REFERENCE"]) ? $sidResultData["SID_REFERENCE"] : '';
             $this->_order  = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
         }
-        if ($this->_order->getStatus() === \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT) {
+        if ($this->_order->getStatus() === Order::STATE_PENDING_PAYMENT) {
             $sid_status = strtoupper(isset($sidResultData["SID_STATUS"]) ? $sidResultData["SID_STATUS"] : '');
             $this->_order->addStatusHistoryComment(__($sid_status))->setIsCustomerNotified(false);
             $this->_order->cancel()->save();

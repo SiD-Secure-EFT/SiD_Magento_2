@@ -10,7 +10,31 @@
 namespace SID\SecureEFT\Controller;
 
 use Magento\Checkout\Controller\Express\RedirectLoginInterface;
+use Magento\Checkout\Model\Session;
+use Magento\Customer\Model\Url;
 use Magento\Framework\App\Action\Action as AppAction;
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\State;
+use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Session\Generic;
+use Magento\Framework\Stdlib\DateTime\DateTime;
+use Magento\Framework\Url\Helper\Data;
+use Magento\Framework\View\Result\PageFactory;
+use Magento\Quote\Model\QuoteFactory;
+use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Sales\Model\Order;
+use Magento\Sales\Model\Order\Payment\Transaction\Builder;
+use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\OrderNotifier;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
+use Psr\Log\LoggerInterface;
+use SID\SecureEFT\Helper\SidConfig;
+use SID\SecureEFT\Model\Config;
+use SID\SecureEFT\Model\PaymentFactory;
+use SID\SecureEFT\Model\SID;
+use SID\SecureEFT\Model\SIDResponseHandler;
 
 abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterface
 {
@@ -19,7 +43,7 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
     protected $_config;
     protected $_quote = false;
     protected $_configType = 'SID\SecureEFT\Model\Config';
-    protected $_configMethod = \SID\SecureEFT\Model\Config::METHOD_CODE;
+    protected $_configMethod = Config::METHOD_CODE;
     protected $_checkoutType;
     protected $_customerSession;
     protected $_checkoutSession;
@@ -34,42 +58,56 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
     protected $_paymentMethod;
     protected $_date;
     protected $_sidResponseHandler;
-    protected $orderRepository;
     protected $onepage;
     protected $_orderCollectionFactory;
+    protected $_state;
     protected $_sidConfig;
     protected $_paymentFactory;
+
+    /**
+     * @var \Magento\Quote\Api\CartRepositoryInterface
+     */
+    protected $quoteRepository;
 
     /**
      * @var Magento\Sales\Model\Order\Payment\Transaction\Builder $_transactionBuilder
      */
     protected $_transactionBuilder;
+
     /**
-     * @var \Magento\Sales\Model\Order
+     * @var Order
      */
     protected $orderModel;
 
+    /**
+     * @var OrderRepositoryInterface
+     */
+    protected $orderRepository;
+
     public function __construct(
-        \Magento\Framework\App\Action\Context $context,
-        \Magento\Framework\View\Result\PageFactory $pageFactory,
+        Context $context,
+        PageFactory $pageFactory,
         \Magento\Customer\Model\Session $customerSession,
-        \Magento\Checkout\Model\Session $checkoutSession,
-        \Magento\Quote\Model\QuoteFactory $quoteFactory,
-        \Magento\Sales\Model\OrderFactory $orderFactory,
-        \Magento\Framework\Session\Generic $sidSession,
-        \Magento\Framework\Url\Helper\Data $urlHelper,
-        \Magento\Customer\Model\Url $customerUrl,
-        \Psr\Log\LoggerInterface $logger,
-        \Magento\Framework\DB\TransactionFactory $transactionFactory,
-        \SID\SecureEFT\Model\SID $paymentMethod,
-        \Magento\Framework\Stdlib\DateTime\DateTime $date,
-        \SID\SecureEFT\Model\SIDResponseHandler $sidResponseHandler,
-        \Magento\Sales\Model\OrderNotifier $OrderNotifier,
-        \Magento\Sales\Model\ResourceModel\Order\CollectionFactory $orderCollectionFactory,
-        \SID\SecureEFT\Helper\SidConfig $sidConfig,
-        \Magento\Sales\Model\Order\Payment\Transaction\Builder $_transactionBuilder,
-        \SID\SecureEFT\Model\PaymentFactory $paymentFactory,
-        \Magento\Sales\Model\Order $orderModel
+        Session $checkoutSession,
+        QuoteFactory $quoteFactory,
+        OrderFactory $orderFactory,
+        Generic $sidSession,
+        Data $urlHelper,
+        Url $customerUrl,
+        LoggerInterface $logger,
+        TransactionFactory $transactionFactory,
+        SID $paymentMethod,
+        DateTime $date,
+        SIDResponseHandler $sidResponseHandler,
+        OrderNotifier $OrderNotifier,
+        CollectionFactory $orderCollectionFactory,
+        State $state,
+        SidConfig $sidConfig,
+        Builder $_transactionBuilder,
+        PaymentFactory $paymentFactory,
+        Order $orderModel,
+        OrderRepositoryInterface $orderRepository,
+        CartRepositoryInterface $quoteRepository
     ) {
         $this->orderModel              = $orderModel;
         $this->_logger                 = $logger;
@@ -87,9 +125,12 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
         $this->_sidResponseHandler     = $sidResponseHandler;
         $this->_orderNotifier          = $OrderNotifier;
         $this->_orderCollectionFactory = $orderCollectionFactory;
+        $this->_state                  = $state;
+        $this->orderRepository         = $orderRepository;
         $this->_sidConfig              = $sidConfig;
         $this->_paymentFactory         = $paymentFactory;
         $this->_transactionBuilder     = $_transactionBuilder;
+        $this->quoteRepository         = $quoteRepository;
 
         parent::__construct($context);
     }
@@ -157,10 +198,10 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
         $this->_order = $this->_checkoutSession->getLastRealOrder();
         if ( ! $this->_order->getId()) {
             $this->getResponse()->setStatusHeader(404, '1.1', 'Not found');
-            throw new \Magento\Framework\Exception\LocalizedException(__('We could not find "Order" for processing'));
+            throw new LocalizedException(__('We could not find "Order" for processing'));
         }
-        if ($this->_order->getState() != \Magento\Sales\Model\Order::STATE_PENDING_PAYMENT) {
-            $this->_order->setState(\Magento\Sales\Model\Order::STATE_PENDING_PAYMENT)->setIsNotified(false)->save();
+        if ($this->_order->getState() != Order::STATE_PENDING_PAYMENT) {
+            $this->_order->setState(Order::STATE_PENDING_PAYMENT)->setIsNotified(false)->save();
         }
         if ($this->_order->getQuoteId()) {
             $this->_checkoutSession->setSIDQuoteId($this->_checkoutSession->getQuoteId());

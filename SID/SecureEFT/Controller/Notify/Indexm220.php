@@ -9,7 +9,10 @@
 
 namespace SID\SecureEFT\Controller\Notify;
 
-class Indexm220 extends \SID\SecureEFT\Controller\AbstractSID
+use Exception;
+use SID\SecureEFT\Controller\AbstractSID;
+
+class Indexm220 extends AbstractSID
 {
     public function execute()
     {
@@ -30,7 +33,7 @@ class Indexm220 extends \SID\SecureEFT\Controller\AbstractSID
             }
             header('HTTP/1.0 200 OK');
             flush();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString());
             $this->messageManager->addExceptionMessage($e, __('We can\'t start SID Checkout.'));
             $this->_redirect('checkout/cart');
