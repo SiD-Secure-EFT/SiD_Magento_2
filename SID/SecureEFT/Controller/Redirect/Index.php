@@ -1,5 +1,5 @@
 <?php
-/*
+/**
  * Copyright (c) 2021 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
@@ -22,14 +22,15 @@ class Index extends AbstractSID
 
     public function execute()
     {
-        $enableNotify   = $this->_sidConfig->getConfigValue('enable_notify') == '1';
-        $enableRedirect = ! $enableNotify;
+        $enableRedirect   = ! $this->_sidConfig->getConfigValue('enable_notify') == '1';
 
         $data = $this->getRequest()->getParams();
         $this->prepareTransactionData($data);
 
-        if ($enableRedirect) {
+        $order = $this->getOrderByIncrementId($data['SID_REFERENCE']);
+        if($enableRedirect && ($order->getSidPaymentProcessed() != 1)){
             try {
+                $order->setSidPaymentProcessed(1)->save();
                 $this->_logger->debug(__METHOD__ . ' : ' . print_r($data, true));
                 $payment_successful = false;
                 if ($this->_sidResponseHandler->validateResponse(
@@ -58,6 +59,8 @@ class Index extends AbstractSID
                 $this->_redirect(self::CARTPATH);
             }
         } else {
+            $this->_logger->debug('REDIRECT - ORDER ALREADY BEING PROCESSED');
+
             //Notify enabled. Process enough to redirect to correct page
             try {
                 $this->_logger->debug(__METHOD__ . ' : ' . print_r($data, true));
@@ -92,11 +95,6 @@ class Index extends AbstractSID
             } catch (LocalizedException $e) {
                 $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage());
                 $this->messageManager->addExceptionMessage($e, $e->getMessage());
-                $this->restoreQuote();
-                $this->_redirect(self::CARTPATH);
-            } catch (Exception $e) {
-                $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString());
-                $this->messageManager->addExceptionMessage($e, __('We can\'t start SID Checkout.'));
                 $this->restoreQuote();
                 $this->_redirect(self::CARTPATH);
             }

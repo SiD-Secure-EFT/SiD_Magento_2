@@ -1,5 +1,5 @@
 <?php
-/*
+/**
  * Copyright (c) 2021 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
@@ -23,6 +23,7 @@ use Magento\Framework\Exception\LocalizedExceptionFactory;
 use Magento\Framework\Model\Context;
 use Magento\Framework\Model\ResourceModel\AbstractResource;
 use Magento\Framework\Registry;
+use Magento\Framework\Stdlib\DateTime\DateTime;
 use Magento\Framework\UrlInterface;
 use Magento\Payment\Helper\Data;
 use Magento\Payment\Model\InfoInterface;
@@ -41,6 +42,7 @@ use Magento\Sales\Model\Order\Payment\Transaction\BuilderInterface;
 use Magento\Sales\Model\Service\InvoiceService;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
+use SID\SecureEFT\Helper\Data as SidHelper;
 
 class SID extends AbstractMethod
 {
@@ -73,6 +75,10 @@ class SID extends AbstractMethod
     protected $_invoiceService;
     protected $_transactionFactory;
 
+    /**
+     * @var DateTime
+     */
+    protected $_date;
 
     /**
      * @var OrderRepositoryInterface
@@ -108,6 +114,8 @@ class SID extends AbstractMethod
         TransactionFactory $transactionFactory,
         AbstractResource $resource = null,
         AbstractDb $resourceCollection = null,
+        SidHelper $sidhelper,
+        DateTime $date,
         array $data = []
     ) {
         parent::__construct(
@@ -137,6 +145,8 @@ class SID extends AbstractMethod
         $this->_transactionFactory   = $transactionFactory;
         $this->_invoiceService       = $invoiceService;
         $this->_invoiceSender        = $invoiceSender;
+        $this->_sidHelper            = $sidhelper;
+        $this->_date                 = $date;
     }
 
     public function setStore($store)
@@ -167,6 +177,7 @@ class SID extends AbstractMethod
 
     public function getStandardCheckoutFormFields()
     {
+        $Payment       = array();
         $order         = $this->_checkoutSession->getLastRealOrder();
         $quoteId       = $order->getQuoteId();
         $orderEntityId = $order->getId();
@@ -185,7 +196,7 @@ class SID extends AbstractMethod
             )
         );
 
-        return array(
+        $data = array(
             'SID_MERCHANT'   => $merchantCode,
             'SID_CURRENCY'   => $currencyCode,
             'SID_COUNTRY'    => $countryCode,
@@ -196,6 +207,14 @@ class SID extends AbstractMethod
             'SID_CUSTOM_03'  => $csfrFormKey,
             'SID_CONSISTENT' => $consistent,
         );
+
+        $Payment['reference']       = $orderId;
+        $Payment['txn_id']          = $orderId;
+        $Payment['additional_data'] = $data;
+
+        $this->_sidHelper->createTransaction($order, $Payment);
+
+        return $data;
     }
 
     // Empty because it's being called by Magento at checkout
@@ -253,11 +272,10 @@ class SID extends AbstractMethod
     /**
      * @inheritdoc
      */
-    public function fetchTransactionInfo(InfoInterface $payment, $transactionId)
+    public function fetchTransactionInfo(InfoInterface $payment, $transactionId): array
     {
-        $state       = ObjectManager::getInstance()->get('\Magento\Framework\App\State');
-        $paymentData = array();
-        $orderquery  = array();
+        $state      = ObjectManager::getInstance()->get('\Magento\Framework\App\State');
+        $orderquery = array();
         if ($state->getAreaCode() == Area::AREA_ADMINHTML) {
             $order_id = $payment->getOrder()->getId();
 
