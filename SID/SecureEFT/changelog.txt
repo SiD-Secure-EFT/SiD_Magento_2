@@ -2,6 +2,10 @@
 Date	  : Version: Description
 =====================================
 
+2021-08-16: v2.4.2 : Consolidate Cron class into single file for Magento 2.4.x.
+                     Block double order processing on multiple requests.
+                     Improve multisite scope handling for Fetch and Cron.
+
 2021-06-28: v2.4.1 : Fix cron query method not firing as expected on some configurations.
                      Fix 'Fetch' query method not updating order status from backend.
                      Remove redirect button.

@@ -1,5 +1,5 @@
 <?php
-/*
+/**
  * Copyright (c) 2021 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
@@ -11,20 +11,112 @@ namespace SID\SecureEFT\Cron;
 
 use DateInterval;
 use DateTime;
+use Magento\Checkout\Model\Session;
+use Magento\Customer\Model\Url;
 use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Area;
+use Magento\Framework\App\State;
+use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Session\Generic;
+use Magento\Framework\Url\Helper\Data;
+use Magento\Framework\View\Result\PageFactory;
+use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Quote\Model\QuoteFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Invoice;
-use SID\SecureEFT\Controller\AbstractSID;
+use Magento\Sales\Model\Order\Payment\Transaction\Builder;
+use Magento\Sales\Model\OrderFactory;
+use Magento\Sales\Model\OrderNotifier;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
+use Psr\Log\LoggerInterface;
+use SID\SecureEFT\Helper\SidConfig;
+use SID\SecureEFT\Model\PaymentFactory;
+use SID\SecureEFT\Model\SID;
+use SID\SecureEFT\Model\SIDResponseHandler;
+use Magento\Framework\Stdlib\DateTime\DateTime as GmtTime;
 
-class CronQuery extends AbstractSID
+class CronQuery
 {
+    protected $_logger;
+    protected $_customerSession;
+    protected $_checkoutSession;
+    protected $_quoteFactory;
+    protected $_orderFactory;
+    protected $sidSession;
+    protected $_urlHelper;
+    protected $_customerUrl;
+    protected $pageFactory;
+    protected $_transactionFactory;
+    protected $_paymentMethod;
+    protected $_date;
+    protected $_sidResponseHandler;
+    protected $_orderCollectionFactory;
+    protected $_state;
+    protected $_sidConfig;
+    protected $_paymentFactory;
 
     /**
-     * @var SearchCriteriaBuilder
+     * @var CartRepositoryInterface
      */
-    protected $searchCriteriaBuilder;
+    protected $quoteRepository;
+
+    /**
+     * @var Magento\Sales\Model\Order\Payment\Transaction\Builder $_transactionBuilder
+     */
+    protected $_transactionBuilder;
+
+    /**
+     * @var OrderRepositoryInterface
+     */
+    protected $orderRepository;
+
+    public function __construct(
+        Context $context,
+        PageFactory $pageFactory,
+        \Magento\Customer\Model\Session $customerSession,
+        Session $checkoutSession,
+        QuoteFactory $quoteFactory,
+        OrderFactory $orderFactory,
+        Generic $sidSession,
+        Data $urlHelper,
+        Url $customerUrl,
+        LoggerInterface $logger,
+        TransactionFactory $transactionFactory,
+        SID $paymentMethod,
+        GmtTime $date,
+        SIDResponseHandler $sidResponseHandler,
+        CollectionFactory $orderCollectionFactory,
+        State $state,
+        SidConfig $sidConfig,
+        Builder $_transactionBuilder,
+        PaymentFactory $paymentFactory,
+        OrderRepositoryInterface $orderRepository,
+        CartRepositoryInterface $quoteRepository
+    ) {
+        $this->_logger                 = $logger;
+        $this->_customerSession        = $customerSession;
+        $this->_checkoutSession        = $checkoutSession;
+        $this->_quoteFactory           = $quoteFactory;
+        $this->_orderFactory           = $orderFactory;
+        $this->sidSession              = $sidSession;
+        $this->_urlHelper              = $urlHelper;
+        $this->_customerUrl            = $customerUrl;
+        $this->pageFactory             = $pageFactory;
+        $this->_transactionFactory     = $transactionFactory;
+        $this->_paymentMethod          = $paymentMethod;
+        $this->_date                   = $date;
+        $this->_sidResponseHandler     = $sidResponseHandler;
+        $this->_orderCollectionFactory = $orderCollectionFactory;
+        $this->_state                  = $state;
+        $this->orderRepository         = $orderRepository;
+        $this->_sidConfig              = $sidConfig;
+        $this->_paymentFactory         = $paymentFactory;
+        $this->_transactionBuilder     = $_transactionBuilder;
+        $this->quoteRepository         = $quoteRepository;
+    }
 
     public function execute()
     {
@@ -53,6 +145,29 @@ class CronQuery extends AbstractSID
                 }
             }
         );
+    }
+
+    public function getQueryResponse($sidWsdl, $soapXml, $header, $justResult = false)
+    {
+        $queryResponse = curl_init();
+        curl_setopt($queryResponse, CURLOPT_URL, $sidWsdl);
+        curl_setopt($queryResponse, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($queryResponse, CURLOPT_TIMEOUT, 10);
+        curl_setopt($queryResponse, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($queryResponse, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($queryResponse, CURLOPT_HEADER, 0);
+        curl_setopt($queryResponse, CURLOPT_POST, true);
+        curl_setopt($queryResponse, CURLOPT_POSTFIELDS, $soapXml);
+        curl_setopt($queryResponse, CURLOPT_HTTPHEADER, $header);
+        $queryResult = curl_exec($queryResponse);
+        $queryError  = curl_error($queryResponse);
+        curl_close($queryResponse);
+
+        if ( ! $justResult) {
+            return ["queryResult" => $queryResult, "queryError" => $queryError];
+        } else {
+            return $queryResult;
+        }
     }
 
     protected function doSoapQuery($orderquery)
