@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2021 PayGate (Pty) Ltd
+ * Copyright (c) 2022 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -22,13 +22,13 @@ class Index extends AbstractSID
 
     public function execute()
     {
-        $enableRedirect   = ! $this->_sidConfig->getConfigValue('enable_notify') == '1';
+        $enableRedirect = ! $this->_sidConfig->getConfigValue('enable_notify') == '1';
 
         $data = $this->getRequest()->getParams();
         $this->prepareTransactionData($data);
 
         $order = $this->getOrderByIncrementId($data['SID_REFERENCE']);
-        if($enableRedirect && ($order->getSidPaymentProcessed() != 1)){
+        if ($enableRedirect && ($order->getSidPaymentProcessed() != 1)) {
             try {
                 $order->setSidPaymentProcessed(1)->save();
                 $this->_logger->debug(__METHOD__ . ' : ' . print_r($data, true));
