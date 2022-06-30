@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2021 PayGate (Pty) Ltd
+ * Copyright (c) 2022 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -299,57 +299,57 @@ class SID extends AbstractMethod
 
 
                 $sid_order_query_response = simplexml_load_string($sid_order_queryResultString);
-                $transaction_details      = $sid_order_query_response->data->orders->transaction;
-                foreach ($transaction_details as $transaction) {
-                    $dateCreated = null;
-                    if ($transaction->date_created && strlen((string)$transaction->date_created) > 3) {
-                        $dateCreated = strtotime(
-                            substr(
-                                (string)$transaction->date_created,
-                                0,
-                                strlen($transaction->date_created) - 3
-                            )
-                        );
-                    }
-                    $dateReady = null;
-                    if ($transaction->date_ready && strlen((string)$transaction->date_ready) > 3) {
-                        $dateReady = strtotime(
-                            substr(
-                                (string)$transaction->date_ready,
-                                0,
-                                strlen($transaction->date_ready) - 3
-                            )
-                        );
-                    }
-                    $dateCompleted = null;
-                    if ($transaction->date_completed && strlen((string)$transaction->date_completed) > 3) {
-                        $dateCompleted = strtotime(
-                            substr(
-                                (string)$transaction->date_completed,
-                                0,
-                                strlen($transaction->date_completed) - 3
-                            )
-                        );
-                    }
-                    $dataArray['signature']        = (string)$sid_order_query_response->data['signature'];
-                    $dataArray['errorcode']        = (string)$sid_order_query_response->data->outcome['errorcode'];
-                    $dataArray['errordescription'] = (string)$sid_order_query_response->data->outcome['errordescription'];
-                    $dataArray['errorsolution']    = (string)$sid_order_query_response->data->outcome['errorsolution'];
-                    $dataArray['status']           = (string)$transaction->status;
-                    $dataArray['code']             = (string)$transaction->country->code;
-                    $dataArray['name']             = (string)$transaction->country->name;
-                    $dataArray['code']             = (string)$transaction->currency->code;
-                    $dataArray['name']             = (string)$transaction->currency->name;
-                    $dataArray['symbol']           = (string)$transaction->currency->symbol;
-                    $dataArray['name']             = (string)$transaction->bank->name;
-                    $dataArray['amount']           = (float)$transaction->amount;
-                    $dataArray['reference']        = (string)$transaction->reference;
-                    $dataArray['receiptno']        = (string)$transaction->receiptno;
-                    $dataArray['tnxid']            = (string)$transaction->tnxid;
-                    $dataArray['date_created']     = $dateCreated;
-                    $dataArray['date_ready']       = $dateReady;
-                    $dataArray['date_completed']   = $dateCompleted;
+
+                $transaction = $sid_order_query_response->data->orders->transaction;
+
+                $dateCreated = null;
+                if ($transaction->date_created && strlen((string)$transaction->date_created) > 3) {
+                    $dateCreated = strtotime(
+                        substr(
+                            (string)$transaction->date_created,
+                            0,
+                            strlen($transaction->date_created) - 3
+                        )
+                    );
                 }
+                $dateReady = null;
+                if ($transaction->date_ready && strlen((string)$transaction->date_ready) > 3) {
+                    $dateReady = strtotime(
+                        substr(
+                            (string)$transaction->date_ready,
+                            0,
+                            strlen($transaction->date_ready) - 3
+                        )
+                    );
+                }
+                $dateCompleted = null;
+                if ($transaction->date_completed && strlen((string)$transaction->date_completed) > 3) {
+                    $dateCompleted = strtotime(
+                        substr(
+                            (string)$transaction->date_completed,
+                            0,
+                            strlen($transaction->date_completed) - 3
+                        )
+                    );
+                }
+                $dataArray['signature']        = (string)$sid_order_query_response->data['signature'];
+                $dataArray['errorcode']        = (string)$sid_order_query_response->data->outcome['errorcode'];
+                $dataArray['errordescription'] = (string)$sid_order_query_response->data->outcome['errordescription'];
+                $dataArray['errorsolution']    = (string)$sid_order_query_response->data->outcome['errorsolution'];
+                $dataArray['status']           = (string)$transaction->status;
+                $dataArray['code']             = (string)$transaction->country->code;
+                $dataArray['name']             = (string)$transaction->country->name;
+                $dataArray['code']             = (string)$transaction->currency->code;
+                $dataArray['name']             = (string)$transaction->currency->name;
+                $dataArray['symbol']           = (string)$transaction->currency->symbol;
+                $dataArray['name']             = (string)$transaction->bank->name;
+                $dataArray['amount']           = (float)$transaction->amount;
+                $dataArray['reference']        = (string)$transaction->reference;
+                $dataArray['receiptno']        = (string)$transaction->receiptno;
+                $dataArray['tnxid']            = (string)$transaction->tnxid;
+                $dataArray['date_created']     = $dateCreated;
+                $dataArray['date_ready']       = $dateReady;
+                $dataArray['date_completed']   = $dateCompleted;
             }
             $this->processApiResponse($order, $queryResponse);
         }
@@ -439,7 +439,8 @@ class SID extends AbstractMethod
         );
         $queryResponse = $this->getQueryResponse($sidWsdl, $soapXml, $header);
 
-        //$this->_logger->debug('Query Response: ' . $queryResult);
+        $this->_logger->debug('Query Response: ' . json_encode($queryResponse));
+
         return $queryResponse;
     }
 

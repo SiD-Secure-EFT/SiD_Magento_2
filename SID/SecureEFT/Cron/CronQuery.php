@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2021 PayGate (Pty) Ltd
+ * Copyright (c) 2022 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -20,6 +20,7 @@ use Magento\Framework\App\State;
 use Magento\Framework\DB\TransactionFactory;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Session\Generic;
+use Magento\Framework\Stdlib\DateTime\DateTime as GmtTime;
 use Magento\Framework\Url\Helper\Data;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Quote\Api\CartRepositoryInterface;
@@ -36,7 +37,6 @@ use SID\SecureEFT\Helper\SidConfig;
 use SID\SecureEFT\Model\PaymentFactory;
 use SID\SecureEFT\Model\SID;
 use SID\SecureEFT\Model\SIDResponseHandler;
-use Magento\Framework\Stdlib\DateTime\DateTime as GmtTime;
 
 class CronQuery
 {
@@ -130,12 +130,18 @@ class CronQuery
                 $ocf->addAttributeToFilter('status', ['eq' => 'pending_payment']);
                 $ocf->addAttributeToFilter('created_at', ['lt' => $cutoffTime]);
                 $ocf->addAttributeToFilter('updated_at', ['lt' => $cutoffTime]);
-                $orderIds = $ocf->getData();
+
+                $orderIds = array();
+                foreach ($ocf as $order) {
+                    if ($order->getPayment()->getMethod() == "sid") {
+                        $orderIds[] = $order->getId();
+                    }
+                }
 
                 $this->_logger->info('Orders for cron: ' . json_encode($orderIds));
 
                 foreach ($orderIds as $orderId) {
-                    $order                  = $this->orderRepository->get($orderId['entity_id']);
+                    $order                  = $this->orderRepository->get($orderId);
                     $orderquery['orderId']  = $order->getRealOrderId();
                     $orderquery['country']  = $order->getBillingAddress()->getCountryId();
                     $orderquery['currency'] = $order->getOrderCurrencyCode();

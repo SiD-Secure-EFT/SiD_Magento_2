@@ -2,6 +2,9 @@
 Date	  : Version: Description
 =====================================
 
+2022-06-30: v2.4.3 : Only use the 'last' transaction in the Cron query method.
+                     Only process SiD orders in a pending state for the Cron query method.
+
 2021-08-16: v2.4.2 : Consolidate Cron class into single file for Magento 2.4.x.
                      Block double order processing on multiple requests.
                      Improve multisite scope handling for Fetch and Cron.

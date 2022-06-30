@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2021 PayGate (Pty) Ltd
+ * Copyright (c) 2022 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -22,7 +22,7 @@ class Indexm220 extends AbstractSID
 
         try {
             $sid_reference = $_POST["SID_REFERENCE"];
-            $order = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+            $order         = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
             if ($enableNotify && ($order->getSidPaymentProcessed() != 1)) {
                 $order->setSidPaymentProcessed(1)->save();
                 if ($this->_sidResponseHandler->validateResponse($_POST)) {
