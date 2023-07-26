@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -58,7 +58,6 @@ class InstallSchema implements InstallSchemaInterface
                            ->addColumn('receiptno', Table::TYPE_TEXT, 255, ['nullable' => false], 'Receipt Number')
                            ->addColumn('tnxid', Table::TYPE_TEXT, 255, ['nullable' => false], 'SID Transaction ID')
                            ->addColumn('date_created', Table::TYPE_DATETIME, null, ['nullable' => true], 'Date Created')
-                           ->addColumn('date_ready', Table::TYPE_DATETIME, null, ['nullable' => true], 'Date Ready')
                            ->addColumn(
                                'date_completed',
                                Table::TYPE_DATETIME,

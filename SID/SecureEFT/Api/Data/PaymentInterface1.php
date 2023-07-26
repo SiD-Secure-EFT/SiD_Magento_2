@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -11,28 +11,27 @@ namespace SID\SecureEFT\Api\Data;
 
 interface PaymentInterface1
 {
-    const PAYMENT_ID       = 'payment_id';
-    const SIGNATURE        = 'signature';
-    const ERRORCODE        = 'errorcode';
-    const ERRORDESCRIPTION = 'errordescription';
-    const ERRORSOLUTION    = 'errorsolution';
-    const STATUS           = 'status';
-    const COUNTRY_CODE     = 'country_code';
-    const COUNTRY_NAME     = 'country_name';
-    const CURRENCY_CODE    = 'currency_code';
-    const CURRENCY_NAME    = 'currency_name';
-    const CURRENCY_SYMBOL  = 'currency_symbol';
-    const BANK_NAME        = 'bank_name';
-    const AMOUNT           = 'amount';
-    const REFERENCE        = 'reference';
-    const RECEIPTNO        = 'receiptno';
-    const TNXID            = 'tnxid';
-    const DATE_CREATED     = 'date_created';
-    const DATE_READY       = 'date_ready';
-    const DATE_COMPLETED   = 'date_completed';
-    const NOTIFIED         = 'notified';
-    const REDIRECTED       = 'redirected';
-    const TIME_STAMP       = 'time_stamp';
+    public const PAYMENT_ID       = 'payment_id';
+    public const SIGNATURE        = 'signature';
+    public const ERRORCODE        = 'errorcode';
+    public const ERRORDESCRIPTION = 'errordescription';
+    public const ERRORSOLUTION    = 'errorsolution';
+    public const STATUS           = 'status';
+    public const COUNTRY_CODE     = 'country_code';
+    public const COUNTRY_NAME     = 'country_name';
+    public const CURRENCY_CODE    = 'currency_code';
+    public const CURRENCY_NAME    = 'currency_name';
+    public const CURRENCY_SYMBOL  = 'currency_symbol';
+    public const BANK_NAME        = 'bank_name';
+    public const AMOUNT           = 'amount';
+    public const REFERENCE        = 'reference';
+    public const RECEIPTNO        = 'receiptno';
+    public const TNXID            = 'tnxid';
+    public const DATE_CREATED     = 'date_created';
+    public const DATE_COMPLETED   = 'date_completed';
+    public const NOTIFIED         = 'notified';
+    public const REDIRECTED       = 'redirected';
+    public const TIME_STAMP       = 'time_stamp';
 
     public function getPaymentId();
 

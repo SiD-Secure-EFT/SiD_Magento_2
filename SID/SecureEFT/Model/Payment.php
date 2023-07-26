@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -13,11 +13,13 @@ use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
 use SID\SecureEFT\Api\Data\{PaymentInterface1, PaymentInterface2, PaymentInterface3};
 
-
-class Payment extends AbstractModel implements PaymentInterface1, PaymentInterface2,
-                                               PaymentInterface3, IdentityInterface
+class Payment extends AbstractModel implements
+    PaymentInterface1,
+    PaymentInterface2,
+    PaymentInterface3,
+    IdentityInterface
 {
-    const CACHE_TAG = 'sid_payment';
+    public const CACHE_TAG = 'sid_payment';
 
     public function _construct()
     {
@@ -197,16 +199,6 @@ class Payment extends AbstractModel implements PaymentInterface1, PaymentInterfa
     public function setDateCreated($dateCreated)
     {
         return $this->setData(self::DATE_CREATED, $dateCreated);
-    }
-
-    public function getDateReady()
-    {
-        return $this->getData(self::DATE_READY);
-    }
-
-    public function setDateReady($dateReady)
-    {
-        return $this->setData(self::DATE_READY, $dateReady);
     }
 
     public function getDateCompleted()

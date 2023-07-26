@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -20,7 +20,6 @@ use Magento\Sales\Setup\SalesSetup;
  */
 class UpgradeData implements UpgradeDataInterface
 {
-
     /**
      *
      * @var Magento\Sales\Setup\SalesSetup

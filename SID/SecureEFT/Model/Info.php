@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -14,10 +14,10 @@ use Psr\Log\LoggerInterface;
 
 class Info
 {
-    const SID_TNXID     = 'sid_tnxid';
-    const SID_RECEIPTNO = 'sid_receiptno';
-    const SID_BANK      = 'sid_bank';
-    const SID_STATUS    = 'sid_status';
+    public const SID_TNXID     = 'sid_tnxid';
+    public const SID_RECEIPTNO = 'sid_receiptno';
+    public const SID_BANK      = 'sid_bank';
+    public const SID_STATUS    = 'sid_status';
 
     protected $_paymentMap = array(
         self::SID_TNXID     => 'sid_tnxid',
@@ -41,11 +41,11 @@ class Info
     {
         $result = array();
         foreach ($keys as $key) {
-            if ( ! isset($this->_paymentMapFull[$key])) {
+            if (! isset($this->_paymentMapFull[$key])) {
                 $this->_paymentMapFull[$key] = array();
             }
-            if ( ! isset($this->_paymentMapFull[$key]['label'])) {
-                if ( ! $payment->hasAdditionalInformation($key)) {
+            if (! isset($this->_paymentMapFull[$key]['label'])) {
+                if (! $payment->hasAdditionalInformation($key)) {
                     $this->_paymentMapFull[$key]['label'] = false;
                     $this->_paymentMapFull[$key]['value'] = false;
                 } else {
@@ -54,7 +54,7 @@ class Info
                     $this->_paymentMapFull[$key]['value'] = $value;
                 }
             }
-            if ( ! empty($this->_paymentMapFull[$key]['value'])) {
+            if (! empty($this->_paymentMapFull[$key]['value'])) {
                 if ($labelValuesOnly) {
                     $this->_logger->debug(__METHOD__ . ' : key = ' . print_r($key, true));
                     $this->_logger->debug(

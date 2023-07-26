@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -16,7 +16,7 @@ use SID\SecureEFT\Controller\AbstractSID;
 
 class Index extends AbstractSID
 {
-    const CARTPATH = "checkout/cart";
+    public const CARTPATH = "checkout/cart";
     protected $resultPageFactory;
     protected $order;
 
@@ -34,16 +34,16 @@ class Index extends AbstractSID
                 $this->_logger->debug(__METHOD__ . ' : ' . print_r($data, true));
                 $payment_successful = false;
                 if ($this->_sidResponseHandler->validateResponse(
-                        $data
-                    ) && $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService(
-                        $data,
-                        $this->_date->gmtDate(),
-                        false
-                    )) {
+                    $data
+                ) && $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService(
+                    $data,
+                    $this->_date->gmtDate(),
+                    false
+                )) {
                     $payment_successful = true;
                     $this->_redirect('checkout/onepage/success');
                 }
-                if ( ! $payment_successful) {
+                if (! $payment_successful) {
                     $this->restoreQuote();
                     throw new LocalizedException(__('Your payment was unsuccessful'));
                 }
@@ -60,7 +60,6 @@ class Index extends AbstractSID
             }
         } else {
             $this->_logger->debug('REDIRECT - ORDER ALREADY BEING PROCESSED');
-
             //Notify enabled. Process enough to redirect to correct page
             try {
                 $this->_logger->debug(__METHOD__ . ' : ' . print_r($data, true));
@@ -68,27 +67,26 @@ class Index extends AbstractSID
 
                 $sentConsistent = $data['SID_CONSISTENT'];
                 unset($data['SID_CONSISTENT']);
-                $consistentString = '';
-                foreach ($data as $d) {
-                    $consistentString .= $d;
-                }
+                $consistentString = implode('', $data);
                 $consistentString .= $this->_sidConfig->getConfigValue('private_key');
                 $ourConsistent    = strtoupper(hash('sha512', $consistentString));
                 $verified         = hash_equals($ourConsistent, $sentConsistent);
+                $data['SID_CONSISTENT'] = $sentConsistent;
 
                 if ($verified && $data['SID_STATUS'] == 'COMPLETED') {
-                    $payment_successful = true;
+
                     if ($this->_sidResponseHandler->validateResponse(
-                            $data
-                        ) && $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService(
-                            $data,
-                            $this->_date->gmtDate(),
-                            false
-                        )) {
+                        $data
+                    ) && $this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService(
+                        $data,
+                        $this->_date->gmtDate(),
+                        false
+                    )) {
+                        $payment_successful = true;
+                        $this->_redirect('checkout/onepage/success');
                     }
-                    $this->_redirect('checkout/onepage/success');
                 }
-                if ( ! $payment_successful) {
+                if (! $payment_successful) {
                     $this->restoreQuote();
                     throw new LocalizedException(__('Your payment was unsuccessful'));
                 }

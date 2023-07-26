@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -38,10 +38,6 @@ interface PaymentInterface2
     public function getDateCreated();
 
     public function setDateCreated($dateCreated);
-
-    public function getDateReady();
-
-    public function setDateReady($dateReady);
 
     public function getDateCompleted();
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -9,11 +9,45 @@
 
 namespace SID\SecureEFT\Controller\Notify;
 
-/**
- * Check for existence of CsrfAwareActionInterface - only v2.3.0+
- */
-if (interface_exists("Magento\Framework\App\CsrfAwareActionInterface")) {
-    class_alias('SID\SecureEFT\Controller\Notify\Indexm230', 'SID\SecureEFT\Controller\Notify\Index');
-} else {
-    class_alias('SID\SecureEFT\Controller\Notify\Indexm220', 'SID\SecureEFT\Controller\Notify\Index');
+use SID\SecureEFT\Controller\AbstractSID;
+use Magento\Framework\App\CsrfAwareActionInterface;
+use Magento\Framework\App\Request\InvalidRequestException;
+use Magento\Framework\App\RequestInterface;
+
+class Index extends AbstractSID implements CsrfAwareActionInterface
+{
+    public function execute()
+    {
+        $enableNotify = $this->_sidConfig->getConfigValue('enable_notify') == '1';
+        $data         = $this->getRequest()->getParams();
+
+        try {
+            $sid_reference = $_POST["SID_REFERENCE"];
+            $order         = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+            if ($enableNotify && ($order->getSidPaymentProcessed() != 1)) {
+                $order->setSidPaymentProcessed(1)->save();
+                if ($this->_sidResponseHandler->validateResponse($_POST)) {
+                    // Get latest status of order before posting in case of multiple responses
+                    if ($this->_sidResponseHandler->checkResponseAgainstSIDWebQueryService(
+                        $_POST,
+                        true,
+                        $this->_date->gmtDate()
+                    )) {
+                        $this->_logger->debug(__METHOD__ . ' : Payment Successful');
+                    } else {
+                        $this->_logger->debug(__METHOD__ . ' : Payment Unsuccessful');
+                    }
+                }
+            } else {
+                $this->_logger->debug('IPN - ORDER ALREADY BEING PROCESSED');
+            }
+
+            header('HTTP/1.0 200 OK');
+            flush();
+        } catch (Exception $e) {
+            $this->_logger->debug(__METHOD__ . ' : ' . $e->getMessage() . '\n' . $e->getTraceAsString());
+            $this->messageManager->addExceptionMessage($e, __('We can\'t start SID Checkout.'));
+            $this->_redirect('checkout/cart');
+        }
+    }
 }
