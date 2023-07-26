@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -18,7 +18,7 @@ use Psr\Log\LoggerInterface;
 
 class Config extends AbstractConfig
 {
-    const METHOD_CODE = 'sid';
+    public const METHOD_CODE = 'sid';
     protected $directoryHelper;
     protected $_storeManager;
     protected $_supportedBuyerCountryCodes = ['ZA'];
@@ -139,7 +139,7 @@ class Config extends AbstractConfig
 
     protected function _getSupportedLocaleCode($localeCode = null)
     {
-        if ( ! $localeCode || ! in_array($localeCode, $this->_supportedImageLocales)) {
+        if (! $localeCode || ! in_array($localeCode, $this->_supportedImageLocales)) {
             return 'en_US';
         }
 

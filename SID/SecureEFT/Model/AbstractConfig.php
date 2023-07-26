@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -16,9 +16,9 @@ use Magento\Store\Model\ScopeInterface;
 
 abstract class AbstractConfig implements ConfigInterface
 {
-    const PAYMENT_ACTION_SALE  = 'Sale';
-    const PAYMENT_ACTION_AUTH  = 'Authorization';
-    const PAYMENT_ACTION_ORDER = 'Order';
+    public const PAYMENT_ACTION_SALE  = 'Sale';
+    public const PAYMENT_ACTION_AUTH  = 'Authorization';
+    public const PAYMENT_ACTION_ORDER = 'Order';
     public $_scopeConfig;
     protected $_methodCode;
     protected $_storeId;

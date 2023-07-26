@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2022 PayGate (Pty) Ltd
+ * Copyright (c) 2023 PayGate (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -186,7 +186,7 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
         $queryError  = curl_error($queryResponse);
         curl_close($queryResponse);
 
-        if ( ! $justResult) {
+        if (! $justResult) {
             return ["queryResult" => $queryResult, "queryError" => $queryError];
         } else {
             return $queryResult;
@@ -196,7 +196,7 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
     protected function _initCheckout()
     {
         $this->_order = $this->_checkoutSession->getLastRealOrder();
-        if ( ! $this->_order->getId()) {
+        if (! $this->_order->getId()) {
             $this->getResponse()->setStatusHeader(404, '1.1', 'Not found');
             throw new LocalizedException(__('We could not find "Order" for processing'));
         }
@@ -223,7 +223,7 @@ abstract class AbstractSIDm220 extends AppAction implements RedirectLoginInterfa
 
     protected function _getQuote()
     {
-        if ( ! $this->_quote) {
+        if (! $this->_quote) {
             $this->_quote = $this->_getCheckoutSession()->getQuote();
         }
 
