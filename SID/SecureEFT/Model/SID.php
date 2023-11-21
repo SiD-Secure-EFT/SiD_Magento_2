@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 PayGate (Pty) Ltd
+ * Copyright (c) 2023 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -19,6 +19,7 @@ use Magento\Framework\App\State;
 use Magento\Framework\Data\Collection\AbstractDb;
 use Magento\Framework\Data\Form\FormKey;
 use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\LocalizedExceptionFactory;
 use Magento\Framework\Model\Context;
 use Magento\Framework\Model\ResourceModel\AbstractResource;
@@ -95,6 +96,7 @@ class SID extends AbstractMethod
     private $state;
 
     public const API_BASE = "www.sidpayment.com";
+    private SidHelper $_sidHelper;
 
     /**
      * @param \Magento\Framework\Model\Context $context
@@ -351,10 +353,12 @@ class SID extends AbstractMethod
                 $dataArray['reference']        = $transaction->transactionId;
                 $dataArray['date_created']     = $dateCreated;
                 $dataArray['date_completed']   = $dateCompleted;
-                $dataArray['receipt_no']       = $payment->getAdditionalInformation()["sid_receiptno"];
-                $dataArray['tnxid']            = $payment->getAdditionalInformation()["sid_tnxid"];
+                $dataArray['receipt_no']       = $payment->getAdditionalInformation()["sid_receiptno"] ?? "";
+                $dataArray['tnxid']            = $payment->getAdditionalInformation()["sid_tnxid"] ?? "";
 
                 $this->validateOrder($order);
+            } else {
+                throw new LocalizedException(__("Transaction not found!"));
             }
 
         }
@@ -455,13 +459,7 @@ class SID extends AbstractMethod
                 $order_successful_email = $this->getConfigValue('order_email');
 
                 if ($order_successful_email != '0') {
-                    $this->OrderSender->send($order);
-                    $order->addStatusHistoryComment(
-                        __(
-                            'Notified customer about order #%1.',
-                            $order->getId()
-                        )
-                    )->setIsCustomerNotified(true)->save();
+                    $this->_sidHelper->sendOrderConfirmation($order);
                 }
 
                 // Capture invoice when payment is successfull
@@ -529,9 +527,23 @@ class SID extends AbstractMethod
 
         $transactionRetrieval = $sidRefundAPI->retrieveTransaction() ?? null;
 
-        if ($transactionRetrieval) {
-            $transactionId = $transactionRetrieval->transactionId;
-            return $sidRefundAPI->processRefund($transactionId, $amount);
+        if (!$transactionRetrieval) {
+            throw new LocalizedException(__("Transaction not found!"));
+        }
+
+        $this->_logger->info("\n\nTRANSACTION: " . json_encode($transactionRetrieval));
+
+        $transactionId = $transactionRetrieval->transactionId;
+        $refund = $sidRefundAPI->processRefund($transactionId, $amount);
+        $this->_logger->info("\n\nREFUND: " . json_encode($refund));
+
+        if (!isset($refund->refundStatus)) {
+            throw new LocalizedException(__($refund->message));
+        } elseif($refund->refundStatus === "Pending"
+        ||$refund->refundStatus === "partial"
+        ||$refund->refundStatus === "refunded"
+        ) {
+            return true;
         }
         return false;
     }

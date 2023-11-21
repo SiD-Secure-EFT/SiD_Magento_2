@@ -2,6 +2,8 @@
 Date	  : Version: Description
 =====================================
 
+2023-11-21: v2.4.5 : Fix fetch transaction failing on new orders.
+
 2023-07-26: v2.4.4 : Update for PHP8.1 and Magento 2.4.4+
                      Update SiD API call.
 

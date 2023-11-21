@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 PayGate (Pty) Ltd
+ * Copyright (c) 2023 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -31,6 +31,7 @@ use Magento\Sales\Model\OrderNotifier;
 use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
 use Psr\Log\LoggerInterface;
 use SID\SecureEFT\Model\PaymentFactory;
+use Magento\Sales\Model\Order\Email\Sender\OrderSender;
 
 class Data extends AbstractHelper
 {
@@ -64,6 +65,7 @@ class Data extends AbstractHelper
      * @var array
      */
     private $methodCodes;
+    private OrderSender $orderSender;
 
     public function __construct(
         Context $context,
@@ -73,6 +75,7 @@ class Data extends AbstractHelper
         Order $orderModel,
         CartRepositoryInterface $quoteRepository,
         DateTime $date,
+        OrderSender $orderSender,
         array $methodCodes
     ) {
         $this->_paymentData        = $paymentData;
@@ -82,6 +85,7 @@ class Data extends AbstractHelper
         $this->_transactionBuilder = $_transactionBuilder;
         $this->quoteRepository     = $quoteRepository;
         $this->_date               = $date;
+        $this->orderSender         = $orderSender;
         parent::__construct($context);
     }
 
@@ -163,5 +167,20 @@ class Data extends AbstractHelper
         } catch (Exception $e) {
             $this->_logger->error($e->getMessage());
         }
+    }
+
+    /**
+     * @param $order
+     * @return void
+     */
+    public function sendOrderConfirmation($order): void
+    {
+        $this->orderSender->send($order);
+        $order->addStatusHistoryComment(
+            __(
+                'Notified customer about order #%1.',
+                $order->getId()
+            )
+        )->setIsCustomerNotified(true)->save();
     }
 }

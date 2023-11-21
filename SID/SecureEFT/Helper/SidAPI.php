@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 PayGate (Pty) Ltd
+ * Copyright (c) 2023 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -31,14 +31,17 @@ class SidAPI
     }
 
     /**
-     * @return stdClass
+     * @return stdClass|bool|null
      */
-    public function retrieveTransaction(): ?stdClass
+    public function retrieveTransaction(): stdClass|bool|null
     {
         $apiQuery = self::API_BASE . "/transactions" . $this->buildQueryString();
-        return end(json_decode($this->doAPICall($apiQuery))->transactions) ?? null;
+        $query = $this->doAPICall($apiQuery);
+        if ($query) {
+            return end(json_decode($query)->transactions);
+        }
+        return false;
     }
-
 
     /**
      * @return string
@@ -52,28 +55,26 @@ class SidAPI
         return rtrim($queryString, "&");
     }
 
+    public function refundReport(): stdClass|bool|null
+    {
+        $uri = self::API_BASE . "/refunds" . str_replace("/query", "", $this->buildQueryString());
+
+        return json_decode($this->doAPICall($uri));
+    }
+
     /**
      * @param $transactionId
      * @param $amount
-     * @return bool
+     * @return stdClass|bool|null
      */
-    public function processRefund($transactionId, $amount): bool
+    public function processRefund($transactionId, $amount): stdClass|bool|null
     {
         $this->queryArr = [
             "transactionId" => $transactionId,
+            "refundAmount"  => $amount
         ];
 
-        $uri = self::API_BASE . "/refunds" . str_replace("/query", "", $this->buildQueryString());
-
-        $refundReport = json_decode($this->doAPICall($uri));
-
-        if ($refundReport->refundId ?? "" === "1") {
-            $this->queryArr["refundAmount"] = $amount;
-            $submitRefund = json_decode($this->doAPICall(self::API_BASE . "/refunds", $this->queryArr));
-            return $submitRefund->refundId === "3";
-        } else {
-            return false;
-        }
+        return json_decode($this->doAPICall(self::API_BASE . "/refunds", $this->queryArr));
     }
 
     /**
@@ -92,7 +93,7 @@ class SidAPI
 
         if (!empty($data)) {
             $curlConfig[CURLOPT_POST] = true;
-            $curlConfig[CURLOPT_POSTFIELDS] = json_encode($data);
+            $curlConfig[CURLOPT_POSTFIELDS] = http_build_query($data);
         }
 
         curl_setopt_array($ch, $curlConfig);
