@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -34,7 +34,7 @@ class Payment extends AbstractDb
 
     protected function _beforeSave(AbstractModel $object)
     {
-        if ($object->isObjectNew() && ! $object->getTimeStamp()) {
+        if ($object->isObjectNew() && !$object->getTimeStamp()) {
             $object->setTimeStamp($this->_date->gmtDate());
         }
 

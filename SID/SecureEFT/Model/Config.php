@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -12,7 +12,7 @@ namespace SID\SecureEFT\Model;
 use Magento\Directory\Helper\Data;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\View\Asset\Repository;
-use Magento\Payment\Model\Method\AbstractMethod;
+use Magento\Payment\Model\MethodInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -110,13 +110,13 @@ class Config extends AbstractConfig
         $action        = $this->getValue('paymentAction');
         switch ($action) {
             case self::PAYMENT_ACTION_AUTH:
-                $paymentAction = AbstractMethod::ACTION_AUTHORIZE;
+                $paymentAction = MethodInterface::ACTION_AUTHORIZE;
                 break;
             case self::PAYMENT_ACTION_SALE:
-                $paymentAction = AbstractMethod::ACTION_AUTHORIZE_CAPTURE;
+                $paymentAction = MethodInterface::ACTION_AUTHORIZE_CAPTURE;
                 break;
             case self::PAYMENT_ACTION_ORDER:
-                $paymentAction = AbstractMethod::ACTION_ORDER;
+                $paymentAction = MethodInterface::ACTION_ORDER;
                 break;
             default:
                 $this->logger->error(
@@ -139,7 +139,7 @@ class Config extends AbstractConfig
 
     protected function _getSupportedLocaleCode($localeCode = null)
     {
-        if (! $localeCode || ! in_array($localeCode, $this->_supportedImageLocales)) {
+        if (!$localeCode || !in_array($localeCode, $this->_supportedImageLocales)) {
             return 'en_US';
         }
 

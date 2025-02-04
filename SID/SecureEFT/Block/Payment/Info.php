@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -30,7 +30,7 @@ class Info extends \Magento\Payment\Block\Info
         $transport = parent::_prepareSpecificInformation($transport);
         $payment   = $this->getInfo();
         $sidInfo   = $this->_sidInfoFactory->create();
-        if (! $this->getIsSecureMode()) {
+        if (!$this->getIsSecureMode()) {
             $info = $sidInfo->getPaymentInfo($payment, true);
 
             return $transport->addData($info);

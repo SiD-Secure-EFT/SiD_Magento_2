@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -9,7 +9,10 @@
 
 namespace SID\SecureEFT\Api\Data;
 
-interface PaymentInterface1
+/**
+ * Handles general payment information.
+ */
+interface GeneralPaymentInterface
 {
     public const PAYMENT_ID       = 'payment_id';
     public const SIGNATURE        = 'signature';

@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -9,6 +9,8 @@
 
 namespace SID\SecureEFT\Model;
 
+use Magento\Framework\App\Request\InvalidRequestException;
+use Magento\Framework\App\RequestInterface;
 use Magento\Framework\DB\TransactionFactory;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Magento\Sales\Model\Order;
@@ -21,16 +23,24 @@ use Psr\Log\LoggerInterface;
 use SID\SecureEFT\Controller\AbstractSID;
 use SID\SecureEFT\Helper\SidConfig;
 use SID\SecureEFT\Helper\SidAPI;
+use Magento\Sales\Api\OrderRepositoryInterface;
 
 class SIDResponseHandler extends AbstractSID
 {
     protected $_order;
-    protected $_orderFactory;
+    protected $orderFactory;
     protected $_transactionFactory;
     protected $_paymentFactory;
     protected $_paymentMethod;
     protected $_date;
     protected $_sidConfig;
+    protected OrderSender $OrderSender;
+    private InvoiceService $_invoiceService;
+    private InvoiceSender $invoiceSender;
+    /**
+     * @var OrderRepositoryInterface
+     */
+    protected $orderRepository;
 
     public function __construct(
         LoggerInterface $logger,
@@ -42,10 +52,11 @@ class SIDResponseHandler extends AbstractSID
         InvoiceService $invoiceService,
         OrderSender $OrderSender,
         DateTime $date,
-        SidConfig $sidConfig
+        SidConfig $sidConfig,
+        OrderRepositoryInterface $orderRepository,
     ) {
         $this->_logger             = $logger;
-        $this->_orderFactory       = $orderFactory;
+        $this->orderFactory        = $orderFactory;
         $this->_paymentMethod      = $paymentMethod;
         $this->invoiceSender       = $invoiceSender;
         $this->_invoiceService     = $invoiceService;
@@ -54,6 +65,7 @@ class SIDResponseHandler extends AbstractSID
         $this->_paymentFactory     = $paymentFactory;
         $this->_date               = $date;
         $this->_sidConfig          = $sidConfig;
+        $this->orderRepository     = $orderRepository;
     }
 
     public function execute()
@@ -72,7 +84,7 @@ class SIDResponseHandler extends AbstractSID
             $sidError  = true;
             $sidErrMsg = 'Data received is empty';
         }
-        if (! $sidError) {
+        if (!$sidError) {
             $sid_status     = strtoupper($sidResultData["SID_STATUS"] ?? '');
             $sid_merchant   = $sidResultData["SID_MERCHANT"] ?? '';
             $sid_country    = $sidResultData["SID_COUNTRY"] ?? '';
@@ -101,23 +113,23 @@ class SIDResponseHandler extends AbstractSID
                 )
             );
 
-            if (! hash_equals($sid_consistent, $consistent_check)) {
+            if (!hash_equals($sid_consistent, $consistent_check)) {
                 $sidError  = true;
                 $sidErrMsg .= 'Consistent is invalid. ';
             }
-            if (! $sidError && $sid_merchant != $this->_sidConfig->getConfigValue("merchant_code")) {
+            if (!$sidError && $sid_merchant != $this->_sidConfig->getConfigValue("merchant_code")) {
                 $sidError  = true;
                 $sidErrMsg .= 'Merchant code received does not match stores merchant code. ';
             }
-            if (! $sidError) {
-                if (! $this->_order) {
-                    $this->_order = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+            if (!$sidError) {
+                if (!$this->_order) {
+                    $this->_order = $this->orderFactory->create()->loadByIncrementId($sid_reference);
                 }
-                if (! $this->_order) {
+                if (!$this->_order) {
                     $sidError  = true;
                     $sidErrMsg .= 'Order not found. ';
                 }
-                if (! $sidError && ((float)$sid_amount != (float)$this->_order->getGrandTotal())) {
+                if (!$sidError && ((float)$sid_amount != (float)$this->_order->getGrandTotal())) {
                     $sidError  = true;
                     $sidErrMsg .= 'Amount paid does not match order amount. ';
                 }
@@ -125,14 +137,19 @@ class SIDResponseHandler extends AbstractSID
         }
         if ($sidError) {
             $this->_logger->debug(__METHOD__ . ' : Error occurred: ' . trim($sidErrMsg));
+
             return false;
         }
 
         return true;
     }
 
-    public function checkResponseAgainstSIDWebQueryService($sidResultData, $notified = null, $redirected = null)
-    {
+    public function checkResponseAgainstSIDWebQueryService(
+        $sidResultData,
+        $payment,
+        $notified = null,
+        $redirected = null
+    ) {
         if (is_bool($notified)) {
             $notifyEnabled = $notified;
         } else {
@@ -148,7 +165,7 @@ class SIDResponseHandler extends AbstractSID
             $sidError  = true;
             $sidErrMsg = 'Data received is empty';
         }
-        if (! $sidError) {
+        if (!$sidError) {
             $sid_status    = $sidResultData["SID_STATUS"] ?? '';
             $sid_country   = $sidResultData["SID_COUNTRY"] ?? '';
             $sid_currency  = $sidResultData["SID_CURRENCY"] ?? '';
@@ -156,11 +173,11 @@ class SIDResponseHandler extends AbstractSID
             $sid_amount    = $sidResultData["SID_AMOUNT"] ?? '';
 
             $queryData = [
-                "sellerReference"   => $sid_reference,
+                "sellerReference" => $sid_reference,
             ];
 
-            $sid_username  = $this->_sidConfig->getConfigValue("username");
-            $sid_password  = $this->_sidConfig->getConfigValue("password");
+            $sid_username = $this->_sidConfig->getConfigValue("username");
+            $sid_password = $this->_sidConfig->getConfigValue("password");
 
             $sidAPI = new SidAPI($queryData, $sid_username, $sid_password);
 
@@ -171,50 +188,51 @@ class SIDResponseHandler extends AbstractSID
                 $sidErrMsg = '';
                 if ($transaction->sellerReference == $sid_reference) {
                     if (((string)$transaction->status) != $sid_status) {
-                        $sidError = true;
+                        $sidError  = true;
                         $sidErrMsg = 'Status mismatch';
                     }
-                    if (! $sidError && ((string)$transaction->country) != $sid_country) {
-                        $sidError = true;
+                    if (!$sidError && ((string)$transaction->country) != $sid_country) {
+                        $sidError  = true;
                         $sidErrMsg = 'Country mismatch';
                     }
-                    if (! $sidError && ((string)$transaction->currency) != $sid_currency) {
-                        $sidError = true;
+                    if (!$sidError && ((string)$transaction->currency) != $sid_currency) {
+                        $sidError  = true;
                         $sidErrMsg = 'Currency mismatch';
                     }
-                    if (! $sidError && ((string)$transaction->amount) != $sid_amount) {
-                        $sidError = true;
+                    if (!$sidError && ((string)$transaction->amount) != $sid_amount) {
+                        $sidError  = true;
                         $sidErrMsg = 'Amount mismatch';
                     }
 
-                    $payment = $this->updatePayment(
+                    $this->updatePayment(
                         $transaction,
                         $sidResultData["SID_TNXID"],
                         $sidResultData["SID_RECEIPTNO"],
+                        $payment,
                         $redirected,
                         $notifyEnabled
                     );
                     if ($payment->getStatus() == 'COMPLETED') {
                         $sidError  = false;
                         $sidErrMsg = '';
-                        $order     = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+                        $order     = $this->orderFactory->create()->loadByIncrementId($sid_reference);
                         if ($order->getStatus() === Order::STATE_PENDING_PAYMENT) {
                             $this->processPayment($sidResultData);
                         }
                     } else {
                         if ($payment->getStatus() == 'CANCELLED') {
-                            $sidError = true;
+                            $sidError  = true;
                             $sidErrMsg = 'Payment cancelled';
-                            $order     = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+                            $order     = $this->orderFactory->create()->loadByIncrementId($sid_reference);
                             if ($this->_sidConfig->getConfigValue('enable_notify') != '1') {
-                                $order->addStatusHistoryComment(
-                                    "Redirect Response, Transaction has been cancelled, SID_TNXID: " . $sidResultData["SID_TNXID"]
-                                )->setIsCustomerNotified(false)->save();
+                                $comment = "Redirect Response, Transaction has been cancelled, SID_TNXID: " . $sidResultData["SID_TNXID"];
                             } else {
-                                $order->addStatusHistoryComment(
-                                    "Notify Response, Transaction has been cancelled, SID_TNXID: " . $sidResultData["SID_TNXID"]
-                                )->setIsCustomerNotified(false)->save();
+                                $comment = "Notify Response, Transaction has been cancelled, SID_TNXID: " . $sidResultData["SID_TNXID"];
                             }
+                            $order->addCommentToStatusHistory($comment)
+                                  ->setIsCustomerNotified(false);
+
+                            $this->orderRepository->save($order);
                         }
                     }
                 }
@@ -234,12 +252,10 @@ class SIDResponseHandler extends AbstractSID
         $transaction,
         $tnxId,
         $sidReceiptNo,
+        $payment,
         $redirected = null,
-        $notified = null
+        $notified = null,
     ) {
-        $payment = $this->_paymentFactory->create();
-        $payment = $payment->load($tnxId, 'tnxid');
-
         $payment->setStatus($transaction->status);
         $payment->setCountryCode($transaction->country);
         $payment->setCurrencyCode($transaction->currency);
@@ -250,7 +266,7 @@ class SIDResponseHandler extends AbstractSID
         $payment->setTnxId($tnxId);
         $payment->setDateCreated($transaction->dateCreated);
         $payment->setDateCompleted($transaction->dateCompleted);
-        if (! $payment->getTimeStamp()) {
+        if (!$payment->getTimeStamp()) {
             $payment->setTimeStamp($this->_date->gmtDate());
         }
         if ($notified) {
@@ -267,8 +283,8 @@ class SIDResponseHandler extends AbstractSID
     private function processPayment($sidResultData)
     {
         $sid_reference = $sidResultData["SID_REFERENCE"] ?? '';
-        if (! $this->_order) {
-            $this->_order = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+        if (!$this->_order) {
+            $this->_order = $this->orderFactory->create()->loadByIncrementId($sid_reference);
         }
         if ($this->_order->getStatus() === Order::STATE_PENDING_PAYMENT) {
             $sid_status    = strtoupper($sidResultData["SID_STATUS"] ?? '');
@@ -282,31 +298,34 @@ class SIDResponseHandler extends AbstractSID
                 $status = $this->_sidConfig->getConfigValue('Successful_Order_status');
             }
             $this->_order->setStatus($status); //configure the status
-            $this->_order->save();
+            // Save the order using the repository
+            $this->orderRepository->save($this->_order);
 
             $order = $this->_order;
 
             if ($this->_sidConfig->getConfigValue('enable_notify') != '1') {
-                $order->addStatusHistoryComment(
-                    "Redirect Response, Transaction has been approved, SID_TNXID: " . $sid_tnxid
-                )->setIsCustomerNotified(false)->save();
+                $comment = "Redirect Response, Transaction has been approved, SID_TNXID: " . $sid_tnxid;
             } else {
-                $order->addStatusHistoryComment(
-                    "Notify Response, Transaction has been approved, SID_TNXID: " . $sid_tnxid
-                )->setIsCustomerNotified(false)->save();
+                $comment = "Notify Response, Transaction has been approved, SID_TNXID: " . $sid_tnxid;
             }
+
+            $order->addCommentToStatusHistory($comment)->setIsCustomerNotified(false);
+            $this->orderRepository->save($order);
 
             $model                  = $this->_paymentMethod;
             $order_successful_email = $model->getConfigData('order_email');
 
             if ($order_successful_email != '0') {
                 $this->OrderSender->send($order);
-                $order->addStatusHistoryComment(
+                $order->addCommentToStatusHistory(
                     __(
                         'Notified customer about order #%1.',
                         $order->getId()
                     )
-                )->setIsCustomerNotified(true)->save();
+                )->setIsCustomerNotified(true);
+
+                // Save the order using the repository
+                $this->orderRepository->save($order);
             }
 
             // Capture invoice when payment is successful
@@ -324,12 +343,15 @@ class SIDResponseHandler extends AbstractSID
             $send_invoice_email = $model->getConfigData('invoice_email');
             if ($send_invoice_email != '0') {
                 $this->invoiceSender->send($invoice);
-                $order->addStatusHistoryComment(
+                $order->addCommentToStatusHistory(
                     __(
                         'Notified customer about invoice #%1.',
                         $invoice->getId()
                     )
-                )->setIsCustomerNotified(true)->save();
+                )->setIsCustomerNotified(true);
+
+                // Save the order using the repository
+                $this->orderRepository->save($order);
             }
 
             $payment = $this->_order->getPayment();
@@ -348,13 +370,37 @@ class SIDResponseHandler extends AbstractSID
     {
         if (!$this->_order) {
             $sid_reference = $sidResultData["SID_REFERENCE"] ?? '';
-            $this->_order  = $this->_orderFactory->create()->loadByIncrementId($sid_reference);
+            $this->_order  = $this->orderFactory->create()->loadByIncrementId($sid_reference);
         }
         if ($this->_order->getStatus() === Order::STATE_PENDING_PAYMENT) {
             $sid_status = strtoupper($sidResultData["SID_STATUS"] ?? '');
-            $this->_order->addStatusHistoryComment(__($sid_status))->setIsCustomerNotified(false);
-            $this->_order->cancel()->save();
+            $this->_order->addCommentToStatusHistory(__($sid_status))->setIsCustomerNotified(false);
+            $this->_order->cancel();
+
+            // Save the order using the repository
+            $this->orderRepository->save($this->_order);
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function createCsrfValidationException(RequestInterface $request): ?InvalidRequestException
+    {
+        return $this->logger->debug("Invalid request exception when attempting to validate CSRF");
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function validateForCsrf(RequestInterface $request): ?bool
+    {
+        return true;
+    }
+    
+    public function getResponse()
+    {
+        // getResponse
     }
 
 }
