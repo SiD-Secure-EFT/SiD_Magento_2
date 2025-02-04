@@ -29,7 +29,7 @@ support@payfast.help should you require any assistance.
 
     - Login to the Magento admin panel.
     - Navigate to **Stores > Configuration > Sales > Payment Methods** and click on
-      **SID Instant EFT**.
+      **SID Secure EFT**.
     - Configure the module according to your needs, then click the **Save Config** button.
 
 4. **Update Buyer and Merchant URLs**
