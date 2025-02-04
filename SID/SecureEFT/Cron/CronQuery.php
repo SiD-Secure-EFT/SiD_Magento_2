@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -37,7 +37,7 @@ class CronQuery
         $this->_state                  = $state;
         $this->orderRepository         = $orderRepository;
         $this->sidSession              = $sid;
-        $this->logger                 = $logger;
+        $this->logger                  = $logger;
     }
 
     public function execute()

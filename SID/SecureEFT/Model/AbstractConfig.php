@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -10,11 +10,11 @@
 namespace SID\SecureEFT\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Payment\Model\Method\ConfigInterface;
 use Magento\Payment\Model\MethodInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Payment\Gateway\Config\Config;
 
-abstract class AbstractConfig implements ConfigInterface
+abstract class AbstractConfig extends Config
 {
     public const PAYMENT_ACTION_SALE  = 'Sale';
     public const PAYMENT_ACTION_AUTH  = 'Authorization';
@@ -60,9 +60,9 @@ abstract class AbstractConfig implements ConfigInterface
         return $this;
     }
 
-    public function getValue($key, $storeId = null)
+    public function getValue($field, $storeId = null)
     {
-        $underscored = strtolower(preg_replace('/(.)([A-Z])/', "$1_$2", $key));
+        $underscored = strtolower(preg_replace('/(.)([A-Z])/', "$1_$2", $field));
         $path        = $this->_getSpecificConfigPath($underscored);
         if ($path !== null) {
             $value = $this->_scopeConfig->getValue($path, ScopeInterface::SCOPE_STORE, $this->_storeId);

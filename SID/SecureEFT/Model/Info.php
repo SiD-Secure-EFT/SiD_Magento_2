@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -26,6 +26,12 @@ class Info
         self::SID_STATUS    => 'sid_status',
     );
     protected $_logger;
+    /**
+     * Map of payment information keys and their associated labels and values.
+     *
+     * @var array
+     */
+    protected array $_paymentMapFull = [];
 
     public function __construct(LoggerInterface $logger)
     {
@@ -41,11 +47,11 @@ class Info
     {
         $result = array();
         foreach ($keys as $key) {
-            if (! isset($this->_paymentMapFull[$key])) {
+            if (!isset($this->_paymentMapFull[$key])) {
                 $this->_paymentMapFull[$key] = array();
             }
-            if (! isset($this->_paymentMapFull[$key]['label'])) {
-                if (! $payment->hasAdditionalInformation($key)) {
+            if (!isset($this->_paymentMapFull[$key]['label'])) {
+                if (!$payment->hasAdditionalInformation($key)) {
                     $this->_paymentMapFull[$key]['label'] = false;
                     $this->_paymentMapFull[$key]['value'] = false;
                 } else {
@@ -54,7 +60,7 @@ class Info
                     $this->_paymentMapFull[$key]['value'] = $value;
                 }
             }
-            if (! empty($this->_paymentMapFull[$key]['value'])) {
+            if (!empty($this->_paymentMapFull[$key]['value'])) {
                 if ($labelValuesOnly) {
                     $this->_logger->debug(__METHOD__ . ' : key = ' . print_r($key, true));
                     $this->_logger->debug(

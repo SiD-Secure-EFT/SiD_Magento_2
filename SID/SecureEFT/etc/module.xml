@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
 /*
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -10,7 +10,7 @@
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
-    <module name="SID_SecureEFT" setup_version="2.4.5">
+    <module name="SID_SecureEFT" setup_version="2.5.0">
         <sequence>
             <module name="Magento_Checkout"/>
             <module name="Magento_Sales"/>

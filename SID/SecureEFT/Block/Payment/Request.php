@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -37,10 +37,9 @@ class Request extends Template
         $this->_orderFactory    = $orderFactory;
         $this->_checkoutSession = $checkoutSession;
         parent::__construct($context, $data);
-        $this->_isScopePrivate = true;
-        $this->readFactory     = $readFactory;
-        $this->reader          = $reader;
-        $this->_paymentMethod  = $paymentMethod;
+        $this->readFactory    = $readFactory;
+        $this->reader         = $reader;
+        $this->_paymentMethod = $paymentMethod;
     }
 
     public function _prepareLayout()

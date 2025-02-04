@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -11,12 +11,12 @@ namespace SID\SecureEFT\Model;
 
 use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
-use SID\SecureEFT\Api\Data\{PaymentInterface1, PaymentInterface2, PaymentInterface3};
+use SID\SecureEFT\Api\Data\{GeneralPaymentInterface, FinancialDetailsInterface, PaymentMetadataInterface};
 
 class Payment extends AbstractModel implements
-    PaymentInterface1,
-    PaymentInterface2,
-    PaymentInterface3,
+    GeneralPaymentInterface,
+    FinancialDetailsInterface,
+    PaymentMetadataInterface,
     IdentityInterface
 {
     public const CACHE_TAG = 'sid_payment';

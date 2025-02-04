@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -18,20 +18,24 @@ use Magento\Framework\App\ObjectManager;
 use Magento\Framework\App\State;
 use Magento\Framework\Data\Collection\AbstractDb;
 use Magento\Framework\Data\Form\FormKey;
+use Magento\Framework\DataObject;
 use Magento\Framework\DB\TransactionFactory;
+use Magento\Framework\Event\ManagerInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\LocalizedExceptionFactory;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Model\AbstractExtensibleModel;
 use Magento\Framework\Model\Context;
 use Magento\Framework\Model\ResourceModel\AbstractResource;
-use Magento\Framework\Registry;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Magento\Framework\UrlInterface;
 use Magento\Payment\Helper\Data;
 use Magento\Payment\Model\InfoInterface;
-use Magento\Payment\Model\Method\AbstractMethod;
 use Magento\Payment\Model\Method\Logger;
+use Magento\Payment\Model\MethodInterface;
+use Magento\Payment\Observer\AbstractDataAssignObserver;
 use Magento\Quote\Api\Data\CartInterface;
-use Magento\Quote\Model\Quote;
+use Magento\Quote\Api\Data\PaymentMethodInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\TransactionRepositoryInterface;
 use Magento\Sales\Model\Order;
@@ -42,12 +46,14 @@ use Magento\Sales\Model\Order\Payment\Transaction;
 use Magento\Sales\Model\Order\Payment\Transaction\BuilderInterface;
 use Magento\Sales\Model\Service\InvoiceService;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManagerInterface;
 use SID\SecureEFT\Helper\Data as SidHelper;
 use SID\SecureEFT\Helper\SidAPI;
+use Magento\Payment\Model\Method\AbstractMethodAdapter;
 
 
-class SID extends AbstractMethod
+class SID extends AbstractExtensibleModel implements MethodInterface, PaymentMethodInterface
 {
     protected $_code = Config::METHOD_CODE;
     protected $_formBlockType = 'SID\SecureEFT\Block\Form';
@@ -94,13 +100,16 @@ class SID extends AbstractMethod
      * @var Area
      */
     private $state;
+    /**
+     * @var ScopeConfigInterface
+     */
+    protected ScopeConfigInterface $_scopeConfig;
 
     public const API_BASE = "www.sidpayment.com";
     private SidHelper $_sidHelper;
 
     /**
      * @param \Magento\Framework\Model\Context $context
-     * @param \Magento\Framework\Registry $registry
      * @param \Magento\Framework\Api\ExtensionAttributesFactory $extensionFactory
      * @param \Magento\Framework\Api\AttributeValueFactory $customAttributeFactory
      * @param \Magento\Payment\Helper\Data $paymentData
@@ -122,13 +131,13 @@ class SID extends AbstractMethod
      * @param \Magento\Framework\DB\TransactionFactory $transactionFactory
      * @param \SID\SecureEFT\Helper\Data $sidhelper
      * @param \Magento\Framework\Stdlib\DateTime\DateTime $date
+     * @param ScopeConfigInterface $_scopeConfig
      * @param \Magento\Framework\Model\ResourceModel\AbstractResource|null $resource
      * @param \Magento\Framework\Data\Collection\AbstractDb|null $resourceCollection
      * @param array $data
      */
     public function __construct(
         Context $context,
-        Registry $registry,
         ExtensionAttributesFactory $extensionFactory,
         AttributeValueFactory $customAttributeFactory,
         Data $paymentData,
@@ -150,22 +159,12 @@ class SID extends AbstractMethod
         TransactionFactory $transactionFactory,
         SidHelper $sidhelper,
         DateTime $date,
+        ScopeConfigInterface $_scopeConfig,
+        ManagerInterface $_eventManager,
         AbstractResource $resource = null,
         AbstractDb $resourceCollection = null,
         array $data = []
     ) {
-        parent::__construct(
-            $context,
-            $registry,
-            $extensionFactory,
-            $customAttributeFactory,
-            $paymentData,
-            $scopeConfig,
-            $logger,
-            $resource,
-            $resourceCollection,
-            $data
-        );
         $this->_storeManager         = $storeManager;
         $this->_urlBuilder           = $urlBuilder;
         $this->_formKey              = $formKey;
@@ -183,6 +182,8 @@ class SID extends AbstractMethod
         $this->_invoiceSender        = $invoiceSender;
         $this->_sidHelper            = $sidhelper;
         $this->_date                 = $date;
+        $this->_scopeConfig          = $_scopeConfig;
+        $this->_eventManager         = $_eventManager;
     }
 
     /**
@@ -209,7 +210,7 @@ class SID extends AbstractMethod
 
     public function isAvailable(CartInterface $quote = null)
     {
-        return parent::isAvailable($quote) && $this->_config->isMethodAvailable();
+        return $this->_config->isMethodAvailable();
     }
 
     public function getStandardCheckoutFormFields()
@@ -293,7 +294,7 @@ class SID extends AbstractMethod
         $stateObject->setStatus('pending_payment');
         $stateObject->setIsNotified(false);
 
-        return parent::initialize($paymentAction, $stateObject);
+        return $this;
     }
 
     public function getSIDUrl()
@@ -311,7 +312,7 @@ class SID extends AbstractMethod
      */
     public function fetchTransactionInfo(InfoInterface $payment, $transactionId): array
     {
-        $state      = ObjectManager::getInstance()->get('\Magento\Framework\App\State');
+        $state = ObjectManager::getInstance()->get('\Magento\Framework\App\State');
 
         if ($state->getAreaCode() == Area::AREA_ADMINHTML) {
             $order_id = $payment->getOrder()->getId();
@@ -345,22 +346,21 @@ class SID extends AbstractMethod
                         )
                     );
                 }
-                $dataArray['status']           = $transaction->status;
-                $dataArray['country_code']     = $transaction->country;
-                $dataArray['currency_symbol']  = $transaction->currency;
-                $dataArray['bank_name']        = $transaction->bank;
-                $dataArray['amount']           = (float)$transaction->amount;
-                $dataArray['reference']        = $transaction->transactionId;
-                $dataArray['date_created']     = $dateCreated;
-                $dataArray['date_completed']   = $dateCompleted;
-                $dataArray['receipt_no']       = $payment->getAdditionalInformation()["sid_receiptno"] ?? "";
-                $dataArray['tnxid']            = $payment->getAdditionalInformation()["sid_tnxid"] ?? "";
+                $dataArray['status']          = $transaction->status;
+                $dataArray['country_code']    = $transaction->country;
+                $dataArray['currency_symbol'] = $transaction->currency;
+                $dataArray['bank_name']       = $transaction->bank;
+                $dataArray['amount']          = (float)$transaction->amount;
+                $dataArray['reference']       = $transaction->transactionId;
+                $dataArray['date_created']    = $dateCreated;
+                $dataArray['date_completed']  = $dateCompleted;
+                $dataArray['receipt_no']      = $payment->getAdditionalInformation()["sid_receiptno"] ?? "";
+                $dataArray['tnxid']           = $payment->getAdditionalInformation()["sid_tnxid"] ?? "";
 
                 $this->validateOrder($order);
             } else {
                 throw new LocalizedException(__("Transaction not found!"));
             }
-
         }
 
         return $dataArray ?? [];
@@ -368,6 +368,7 @@ class SID extends AbstractMethod
 
     /**
      * @param $order
+     *
      * @return void
      */
     public function validateOrder($order): void
@@ -430,10 +431,10 @@ class SID extends AbstractMethod
     private function processPayment($order, $transaction)
     {
         if ($order->getStatus() === Order::STATE_PENDING_PAYMENT) {
-            $sid_status    = $transaction->status;
-            $sid_amount    = $transaction->amount;
-            $sid_bank      = $transaction->bank;
-            $sid_tnxid     = $transaction->transactionId;
+            $sid_status = $transaction->status;
+            $sid_amount = $transaction->amount;
+            $sid_bank   = $transaction->bank;
+            $sid_tnxid  = $transaction->transactionId;
 
             switch ($sid_status) {
                 case 'COMPLETED':
@@ -534,22 +535,24 @@ class SID extends AbstractMethod
         $this->_logger->info("\n\nTRANSACTION: " . json_encode($transactionRetrieval));
 
         $transactionId = $transactionRetrieval->transactionId;
-        $refund = $sidRefundAPI->processRefund($transactionId, $amount);
+        $refund        = $sidRefundAPI->processRefund($transactionId, $amount);
         $this->_logger->info("\n\nREFUND: " . json_encode($refund));
 
         if (!isset($refund->refundStatus)) {
             throw new LocalizedException(__($refund->message));
-        } elseif($refund->refundStatus === "Pending"
-        ||$refund->refundStatus === "partial"
-        ||$refund->refundStatus === "refunded"
+        } elseif ($refund->refundStatus === "Pending"
+                  || $refund->refundStatus === "partial"
+                  || $refund->refundStatus === "refunded"
         ) {
             return true;
         }
+
         return false;
     }
 
     /**
      * @param $payment
+     *
      * @return SidAPI
      */
     public function initialiseSidApi($payment): SidAPI
@@ -562,9 +565,9 @@ class SID extends AbstractMethod
         $order = $this->orderRepository->get($order_id);
 
         $queryData = [
-            "sellerReference"   => $order->getRealOrderId(),
-            "startDate"          => strtok($order->getCreatedAt("yyyy-mm-d"), " "),
-            "endDate"            => date("Y-m-d")
+            "sellerReference" => $order->getRealOrderId(),
+            "startDate"       => strtok($order->getCreatedAt("yyyy-mm-d"), " "),
+            "endDate"         => date("Y-m-d")
         ];
 
         return new SidAPI($queryData, $uname, $password);
@@ -579,5 +582,427 @@ class SID extends AbstractMethod
     public function canRefundPartialPerInvoice()
     {
         return $this->canRefund();
+    }
+
+    /**
+     * Gets gateway code
+     *
+     * @return SID|string
+     */
+    public function getCode()
+    {
+        return $this->_code;
+    }
+
+    /**
+     * Gets gateway form block type
+     *
+     * @return string
+     */
+    public function getFormBlockType()
+    {
+        return $this->_formBlockType;
+    }
+
+    /**
+     * Gets gateway title
+     *
+     * @return string
+     */
+    public function getTitle()
+    {
+        return $this->getConfigData('title');
+    }
+
+    /**
+     * Gets gateway store name
+     *
+     * @return mixed
+     */
+    public function getStore()
+    {
+        return $this->getStoreName();
+    }
+
+    /**
+     * Gateway can order attribute
+     *
+     * @return bool
+     */
+    public function canOrder()
+    {
+        return $this->_canOrder;
+    }
+
+    /**
+     * Gateway can authorize attribute
+     *
+     * @return bool
+     */
+    public function canAuthorize()
+    {
+        return $this->_canAuthorize;
+    }
+
+    /**
+     * Gateway can capture attribute
+     *
+     * @return bool
+     */
+    public function canCapture()
+    {
+        return $this->_canCapture;
+    }
+
+    /**
+     * Gateway can capture partial attribute
+     *
+     * @return bool
+     */
+    public function canCapturePartial()
+    {
+        return $this->_canCapture;
+    }
+
+    /**
+     * Gateway can capture once attribute
+     *
+     * @return bool
+     */
+    public function canCaptureOnce()
+    {
+        return $this->_canCapture;
+    }
+
+    /**
+     * Gateway can void attribute
+     *
+     * @return bool
+     */
+    public function canVoid()
+    {
+        return $this->_canVoid;
+    }
+
+    /**
+     * Gateway can use internal attribute
+     *
+     * @return bool
+     */
+    public function canUseInternal()
+    {
+        return $this->_canUseInternal;
+    }
+
+    /**
+     * Gateway can use checkout attribute
+     *
+     * @return bool
+     */
+    public function canUseCheckout()
+    {
+        return $this->_canUseCheckout;
+    }
+
+    /**
+     * Gateway can edit attribute
+     *
+     * @return false
+     */
+    public function canEdit()
+    {
+        return true;
+    }
+
+    /**
+     * Gateway can transaction fetch info attribute
+     *
+     * @return bool
+     */
+    public function canFetchTransactionInfo()
+    {
+        return $this->_canFetchTransactionInfo;
+    }
+
+    /**
+     * Gateway is gateway attribute
+     *
+     * @return bool
+     */
+    public function isGateway()
+    {
+        return $this->_isGateway;
+    }
+
+    /**
+     * Gateway is offline attribute
+     *
+     * @return false
+     */
+    public function isOffline()
+    {
+        return false;
+    }
+
+    /**
+     * Gateway is initialisation needed attribute
+     *
+     * @return bool
+     */
+    public function isInitializeNeeded()
+    {
+        return $this->_isInitializeNeeded;
+    }
+
+    /**
+     * To check billing country is allowed for the payment method
+     *
+     * @param string $country
+     *
+     * @return bool
+     */
+    public function canUseForCountry($country)
+    {
+        /*
+        for specific country, the flag will set up as 1
+        */
+        if ($this->getConfigData('allowspecific') == 1) {
+            $availableCountries = explode(',', $this->getConfigData('specificcountry') ?? '');
+            if (!in_array($country, $availableCountries)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Gateway get info block type
+     *
+     * @return string
+     */
+    public function getInfoBlockType()
+    {
+        return $this->_infoBlockType;
+    }
+
+    /**
+     * Retrieve payment information model object
+     *
+     * @return InfoInterface
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    public function getInfoInstance()
+    {
+        $instance = $this->getData('info_instance');
+        if (!$instance instanceof InfoInterface) {
+            throw new \Magento\Framework\Exception\LocalizedException(
+                __('We cannot retrieve the payment information object instance.')
+            );
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Gateway set info instance
+     *
+     * @param InfoInterface $info
+     *
+     * @return false
+     */
+    public function setInfoInstance(InfoInterface $info)
+    {
+        $this->setData('info_instance', $info);
+    }
+
+    /**
+     * Validate payment method information object
+     *
+     * @return $this
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    public function validate()
+    {
+        /**
+         * to validate payment method is allowed for billing country or not
+         */
+        $paymentInfo = $this->getInfoInstance();
+        if ($paymentInfo instanceof Payment) {
+            $billingCountry = $paymentInfo->getOrder()->getBillingAddress()->getCountryId();
+        } else {
+            $billingCountry = $paymentInfo->getQuote()->getBillingAddress()->getCountryId();
+        }
+        $billingCountry = $billingCountry ?: $this->directory->getDefaultCountry();
+
+        if (!$this->canUseForCountry($billingCountry)) {
+            throw new \Magento\Framework\Exception\LocalizedException(
+                __('You can\'t use the payment type you selected to make payments to the billing country.')
+            );
+        }
+
+        return $this;
+    }
+
+    /**
+     * Gateway order function
+     *
+     * @param InfoInterface $payment
+     * @param float $amount
+     *
+     * @return SID
+     */
+    public function order(InfoInterface $payment, $amount)
+    {
+        return $this;
+    }
+
+    /**
+     * Gateway authorize function
+     *
+     * @param InfoInterface $payment
+     * @param float $amount
+     *
+     * @return SID
+     */
+    public function authorize(InfoInterface $payment, $amount)
+    {
+        return $this;
+    }
+
+    /**
+     * Gateway capture function
+     *
+     * @param InfoInterface $payment
+     * @param float $amount
+     *
+     * @return SID
+     */
+    public function capture(InfoInterface $payment, $amount)
+    {
+        return $this;
+    }
+
+    /**
+     * Gateway cancel function
+     *
+     * @param InfoInterface $payment
+     *
+     * @return SID
+     */
+    public function cancel(InfoInterface $payment)
+    {
+        return $this;
+    }
+
+    /**
+     * Gateway void function
+     *
+     * @param InfoInterface $payment
+     *
+     * @return SID
+     */
+    public function void(InfoInterface $payment)
+    {
+        return $this;
+    }
+
+    /**
+     * Gateway can review attribute
+     *
+     * @return bool
+     */
+    public function canReviewPayment()
+    {
+        return $this->_canReviewPayment;
+    }
+
+    /**
+     * Gateway accept payment attribute
+     *
+     * @param InfoInterface $payment
+     *
+     * @return false
+     */
+    public function acceptPayment(InfoInterface $payment)
+    {
+        return false;
+    }
+
+    /**
+     * Gateway deny payment attribute
+     *
+     * @param InfoInterface $payment
+     *
+     * @return SID
+     */
+    public function denyPayment(InfoInterface $payment)
+    {
+        return $this;
+    }
+
+    /**
+     * Retrieve information from payment configuration
+     *
+     * @param string $field
+     * @param int|string|null|Store $storeId
+     *
+     * @return mixed
+     * @throws NoSuchEntityException
+     */
+    public function getConfigData($field, $storeId = null)
+    {
+        if ('order_place_redirect_url' === $field) {
+            return $this->getOrderPlaceRedirectUrl();
+        }
+        if (null === $storeId) {
+            $storeId = $this->_storeManager->getStore()->getId();
+        }
+        $path = 'payment/' . $this->getCode() . '/' . $field;
+
+        return $this->_scopeConfig->getValue($path, \Magento\Store\Model\ScopeInterface::SCOPE_STORE, $storeId);
+    }
+
+    /**
+     * Assign data to info model instance
+     *
+     * @param array|\Magento\Framework\DataObject $data
+     *
+     * @return $this
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    public function assignData(\Magento\Framework\DataObject $data)
+    {
+        $this->_eventManager->dispatch(
+            'payment_method_assign_data_' . $this->getCode(),
+            [
+                AbstractDataAssignObserver::METHOD_CODE => $this,
+                AbstractDataAssignObserver::MODEL_CODE  => $this->getInfoInstance(),
+                AbstractDataAssignObserver::DATA_CODE   => $data
+            ]
+        );
+
+        $this->_eventManager->dispatch(
+            'payment_method_assign_data',
+            [
+                AbstractDataAssignObserver::METHOD_CODE => $this,
+                AbstractDataAssignObserver::MODEL_CODE  => $this->getInfoInstance(),
+                AbstractDataAssignObserver::DATA_CODE   => $data
+            ]
+        );
+
+        return $this;
+    }
+
+    /**
+     * Is active
+     *
+     * @param int|null $storeId
+     *
+     * @return bool
+     */
+    public function isActive($storeId = null)
+    {
+        return (bool)(int)$this->getConfigData('active', $storeId);
     }
 }

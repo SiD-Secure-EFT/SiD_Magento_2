@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2023 Payfast (Pty) Ltd
+ * Copyright (c) 2025 Payfast (Pty) Ltd
  *
  * Author: App Inlet (Pty) Ltd
  *
@@ -10,6 +10,7 @@
 namespace SID\SecureEFT\Helper;
 
 use stdClass;
+use GuzzleHttp\Client;
 
 class SidAPI
 {
@@ -36,10 +37,11 @@ class SidAPI
     public function retrieveTransaction(): stdClass|bool|null
     {
         $apiQuery = self::API_BASE . "/transactions" . $this->buildQueryString();
-        $query = $this->doAPICall($apiQuery);
+        $query    = $this->doAPICall($apiQuery);
         if ($query) {
             return end(json_decode($query)->transactions);
         }
+
         return false;
     }
 
@@ -52,6 +54,7 @@ class SidAPI
         foreach ($this->queryArr as $query => $value) {
             $queryString .= $query . "=" . $value . "&";
         }
+
         return rtrim($queryString, "&");
     }
 
@@ -65,6 +68,7 @@ class SidAPI
     /**
      * @param $transactionId
      * @param $amount
+     *
      * @return stdClass|bool|null
      */
     public function processRefund($transactionId, $amount): stdClass|bool|null
@@ -80,29 +84,26 @@ class SidAPI
     /**
      * @param $uri
      * @param array $data
+     *
      * @return string
      */
     private function doAPICall($uri, array $data = []): string
     {
-        $ch = curl_init();
-        $curlConfig = array(
-            CURLOPT_URL => $uri,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_USERPWD => $this->username . ":" . $this->password
-        );
+        $client = new Client([
+                                 'auth' => [$this->username, $this->password], // Basic authentication
+                             ]);
 
-        if (!empty($data)) {
-            $curlConfig[CURLOPT_POST] = true;
-            $curlConfig[CURLOPT_POSTFIELDS] = http_build_query($data);
+        try {
+            $options = [];
+            if (!empty($data)) {
+                $options['form_params'] = $data; // Use form parameters for POST
+            }
+
+            $response = $client->request(empty($data) ? 'GET' : 'POST', $uri, $options);
+
+            return $response->getBody()->getContents();
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            return $e->getMessage(); // Return error message on failure
         }
-
-        curl_setopt_array($ch, $curlConfig);
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            return curl_error($ch);
-        }
-
-        return $response;
     }
 }
